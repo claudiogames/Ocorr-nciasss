@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Ocorrências - 1º Turno</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- Chart.js para gráficos interativos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (XLSX) para exportação para Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas para download em Imagem -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- FontAwesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* Estilo para fundo azul quando ativo */
+        body.theme-blue {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+        }
+        body.theme-blue .bg-white, 
+        body.theme-blue .dark\:bg-slate-900 {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        body.theme-blue nav {
+            background-color: #0284c7 !important;
+            border-color: #0369a1 !important;
+        }
+        
+        @media print {
+            nav, .acoes-topo, .botoes-abas, button, .filtros-print {
+                display: none !important;
+            }
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            .shadow-md, .shadow-lg {
+                box-shadow: none !important;
+                border: 1px solid #e5e7eb !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-slate-950 text-gray-800 dark:text-gray-100 font-sans leading-normal tracking-normal transition-colors duration-200">
+
+    <!-- Navbar em Largura Total -->
+    <nav class="bg-slate-900 dark:bg-slate-900 text-white shadow-lg border-b border-slate-800 transition-colors duration-200 w-full px-4 py-4">
+        <div class="w-full flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>
+                <div>
+                    <span class="text-lg sm:text-xl font-bold tracking-wide">Controle de Ocorrências - 1º Turno</span>
+                    <span class="text-xs text-blue-400 block font-mono font-semibold">Portão 1 CD</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <span id="status-supabase" class="text-xs bg-slate-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 text-amber-400">
+                    <i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Conectando BD...
+                </span>
+                <span class="text-sm bg-slate-800 px-3 py-1 rounded-full hidden md:inline-block"><i class="fa-solid fa-clock mr-1"></i> Turno 1</span>
+                <span class="text-sm bg-slate-800 px-3 py-1 rounded-full hidden lg:inline-block" id="current-date"></span>
+                
+                <!-- Botão Tema Fundo Azul -->
+                <button onclick="alternarTemaAzul()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5 border border-blue-400 shadow-sm" title="Alternar Fundo Azul">
+                    <i class="fa-solid fa-palette"></i> <span class="hidden md:inline text-xs font-semibold">Fundo Azul</span>
+                </button>
+
+                <button onclick="alternarModoEscuro()" class="bg-slate-800 hover:bg-slate-700 text-yellow-400 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5 border border-slate-700" title="Alternar Modo Escuro">
+                    <i class="fa-solid fa-circle-half-stroke" id="icone-tema"></i> <span class="hidden md:inline text-xs font-semibold">Tema</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo Principal em Largura Total -->
+    <div class="w-full px-3 sm:px-6 py-6" id="painel-conteudo">
+
+        <!-- Navegação entre Abas -->
+        <div class="flex flex-wrap justify-between items-center mb-6 botoes-abas gap-4">
+            <div class="flex space-x-2 bg-white dark:bg-slate-900 p-1.5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                <button onclick="mudarAba('acompanhamento')" id="tab-acompanhamento" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-blue-600 text-white shadow flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high"></i> Acompanhamento & Indicadores
+                </button>
+                <button onclick="mudarAba('graficos')" id="tab-graficos" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line"></i> Gráficos & Relatórios
+                </button>
+            </div>
+
+            <!-- Botões de Ação Rápida para Relatórios -->
+            <div class="flex items-center gap-2">
+                <button onclick="abrirModalRelatorioTurnoRapido()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl shadow transition flex items-center gap-2 text-xs sm:text-sm">
+                    <i class="fa-solid fa-bolt text-base"></i> Relatório Rápido
+                </button>
+                <button onclick="abrirModalRelatorioDia()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl shadow transition flex items-center gap-2 text-xs sm:text-sm">
+                    <i class="fa-solid fa-file-invoice text-base"></i> Relatório do Dia
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= ABA 1: ACOMPANHAMENTO ================= -->
+        <div id="secao-acompanhamento" class="space-y-6">
+            
+            <!-- Barra de Filtros por Calendário -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 flex flex-wrap gap-4 items-center justify-between border border-gray-200 dark:border-slate-800 filtros-print w-full">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-gray-700 dark:text-gray-300 font-bold text-sm"><i class="fa-solid fa-calendar-days text-blue-600 mr-2"></i>Filtrar por Período:</span>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">De:</label>
+                        <input type="date" id="filtro-data-inicio" onchange="aplicarFiltroCalendario()" class="border border-gray-300 dark:border-slate-700 rounded-lg p-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Até:</label>
+                        <input type="date" id="filtro-data-fim" onchange="aplicarFiltroCalendario()" class="border border-gray-300 dark:border-slate-700 rounded-lg p-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <button onclick="limparFiltroCalendario()" class="bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg text-xs font-semibold transition">
+                        Ver Tudo
+                    </button>
+                </div>
+                <div id="info-filtro-ativo" class="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-slate-700">
+                    Exibindo: Todos os dados
+                </div>
+            </div>
+
+            <!-- Cards de Indicadores (KPIs) PRINCIPAIS -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full">
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-red-500 border border-gray-200 dark:border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Rasgadas (Sorter)</p>
+                            <h3 class="text-xl font-extrabold text-gray-800 dark:text-gray-100 mt-1" id="kpi-sorter">0</h3>
+                        </div>
+                        <div class="bg-red-100 dark:bg-red-950/50 p-2 rounded-full text-red-600 dark:text-red-400">
+                            <i class="fa-solid fa-barcode text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-orange-500 border border-gray-200 dark:border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Rasgadas (Carreg.)</p>
+                            <h3 class="text-xl font-extrabold text-gray-800 dark:text-gray-100 mt-1" id="kpi-carregamento-rasgadas">0</h3>
+                        </div>
+                        <div class="bg-orange-100 dark:bg-orange-950/50 p-2 rounded-full text-orange-600 dark:text-orange-400">
+                            <i class="fa-solid fa-box-open text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-amber-500 border border-gray-200 dark:border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Faltas Carreg.</p>
+                            <h3 class="text-xl font-extrabold text-gray-800 dark:text-gray-100 mt-1" id="kpi-faltas">0</h3>
+                        </div>
+                        <div class="bg-amber-100 dark:bg-amber-950/50 p-2 rounded-full text-amber-600 dark:text-amber-400">
+                            <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-cyan-500 border border-gray-200 dark:border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Faltas no App</p>
+                            <h3 class="text-xl font-extrabold text-cyan-600 dark:text-cyan-400 mt-1" id="kpi-faltas-no-app">0</h3>
+                        </div>
+                        <div class="bg-cyan-100 dark:bg-cyan-950/50 p-2 rounded-full text-cyan-600 dark:text-cyan-400">
+                            <i class="fa-solid fa-mobile-screen-button text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-blue-500 border border-gray-200 dark:border-slate-800 col-span-2 sm:col-span-1">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Total Ocorrências</p>
+                            <h3 class="text-xl font-extrabold text-gray-800 dark:text-gray-100 mt-1" id="kpi-total">0</h3>
+                        </div>
+                        <div class="bg-blue-100 dark:bg-blue-950/50 p-2 rounded-full text-blue-600 dark:text-blue-400">
+                            <i class="fa-solid fa-calculator text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO: OUTROS QUANTITATIVOS -->
+            <div class="w-full">
+                <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-blue-600"></i> Outros Quantitativos
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                    
+                    <!-- Card 1: Caixas aguardando reposição -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-indigo-500 border border-gray-200 dark:border-slate-800 flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-xs font-semibold">Caixas aguardando reposição</p>
+                            <h3 class="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1" id="kpi-aguardando-reposicao">0</h3>
+                        </div>
+                        <div class="bg-indigo-100 dark:bg-indigo-950/50 p-3 rounded-full text-indigo-600 dark:text-indigo-400">
+                            <i class="fa-solid fa-boxes-stacked text-lg"></i>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Caixas sem externas -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-purple-500 border border-gray-200 dark:border-slate-800 flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-xs font-semibold">Caixas sem externas</p>
+                            <h3 class="text-2xl font-extrabold text-purple-600 dark:text-purple-400 mt-1" id="kpi-sem-externas">0</h3>
+                        </div>
+                        <div class="bg-purple-100 dark:bg-purple-950/50 p-3 rounded-full text-purple-600 dark:text-purple-400">
+                            <i class="fa-solid fa-tag text-lg"></i>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Tabela Analítica Minimalista & Dinâmica -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 sm:p-5 border border-gray-200 dark:border-slate-800 w-full">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-blue-600"></i> Relatório Analítico
+                    </h3>
+                    <span class="text-xs text-gray-500 dark:text-gray-400" id="contador-linhas">Exibindo registros</span>
+                </div>
+                <div class="overflow-x-auto w-full">
+                    <table class="min-w-full divide-y divide-gray-100 dark:divide-slate-800 text-left text-xs" id="tabela-exportacao">
+                        <thead class="bg-gray-50/50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-400 uppercase font-semibold text-[10px]">
+                            <tr>
+                                <th class="py-2 px-3">Data</th>
+                                <th class="py-2 px-3">Sorter</th>
+                                <th class="py-2 px-3">Carreg.</th>
+                                <th class="py-2 px-3">Faltas</th>
+                                <th class="py-2 px-3 text-cyan-600 dark:text-cyan-400">App</th>
+                                <th class="py-2 px-3 font-bold text-gray-800 dark:text-gray-200">Total</th>
+                                <th class="py-2 px-3 text-amber-600 dark:text-amber-400">Pend.</th>
+                                <th class="py-2 px-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-slate-800/60 text-gray-700 dark:text-gray-300 font-medium" id="tabela-acompanhamento-corpo"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- OPÇÕES DE EXPORTAÇÃO -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 flex flex-wrap items-center justify-between gap-4 border border-gray-200 dark:border-slate-800 w-full">
+                <div>
+                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <i class="fa-solid fa-file-arrow-down text-blue-600"></i> Exportar Dados
+                    </h4>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Baixe os dados do painel em múltiplos formatos.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="exportarExcel()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel"></i> Excel (.xlsx)
+                    </button>
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-pdf"></i> PDF
+                    </button>
+                    <button onclick="baixarImagem()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-camera"></i> Imagem (PNG)
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= ABA 2: GRÁFICOS & RELATÓRIOS ================= -->
+        <div id="secao-graficos" class="hidden space-y-6">
+            
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 sm:p-6 border border-gray-200 dark:border-slate-800 w-full">
+                <div class="border-b border-gray-100 dark:border-slate-800 pb-3 mb-4 flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-grid text-blue-600"></i> Painel Geral de Gráficos (Visão Unificada)
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Acompanhamento completo de cartas de controle, tendência e distribuição operacional.</p>
+                    </div>
+                    <span id="cep-status-badge" class="px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Calculando CEP...
+                    </span>
+                </div>
+
+                <!-- GRADE 2 COLUNAS LADO A LADO -->
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+                    
+                    <!-- GRÁFICO 1: CEP -->
+                    <div class="bg-gray-50/50 dark:bg-slate-800/40 p-3 rounded-xl border border-gray-200/80 dark:border-slate-800 flex flex-col justify-between">
+                        <div class="mb-2">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1 truncate">
+                                <i class="fa-solid fa-shield-halved text-purple-500"></i> Carta CEP
+                            </h4>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:block">Limites estatísticos (Média ± 3σ).</p>
+                        </div>
+                        <div class="relative h-48 sm:h-60 w-full">
+                            <canvas id="cepChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICO 2: EVOLUÇÃO (LINHA) -->
+                    <div class="bg-gray-50/50 dark:bg-slate-800/40 p-3 rounded-xl border border-gray-200/80 dark:border-slate-800 flex flex-col justify-between">
+                        <div class="mb-2">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1 truncate">
+                                <i class="fa-solid fa-chart-line text-blue-500"></i> Evolução Diária
+                            </h4>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:block">Tendência temporal por tipo.</p>
+                        </div>
+                        <div class="relative h-48 sm:h-60 w-full">
+                            <canvas id="linhaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICO 3: DISTRIBUIÇÃO (PIZZA / ROSCA) -->
+                    <div class="bg-gray-50/50 dark:bg-slate-800/40 p-3 rounded-xl border border-gray-200/80 dark:border-slate-800 flex flex-col justify-between">
+                        <div class="mb-2">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1 truncate">
+                                <i class="fa-solid fa-chart-pie text-emerald-500"></i> Distribuição
+                            </h4>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:block">Proporção das categorias.</p>
+                        </div>
+                        <div class="relative h-48 sm:h-60 w-full flex justify-center items-center">
+                            <canvas id="pizzaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICO 4: QUANTITATIVO (BARRA) -->
+                    <div class="bg-gray-50/50 dark:bg-slate-800/40 p-3 rounded-xl border border-gray-200/80 dark:border-slate-800 flex flex-col justify-between">
+                        <div class="mb-2">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1 truncate">
+                                <i class="fa-solid fa-chart-column text-amber-500"></i> Consolidado
+                            </h4>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:block">Soma acumulada por categoria.</p>
+                        </div>
+                        <div class="relative h-48 sm:h-60 w-full">
+                            <canvas id="barraChart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- SCRIPT DE LÓGICA + SUPABASE CONECTADO -->
+    <script>
+        const SUPABASE_URL = 'Https://dylwhnsxjbeiukdmcupq.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
+        
+        let supabaseClient = null;
+        let registros = [];
+
+        try {
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (e) {
+            console.error("Erro ao instanciar o Supabase:", e);
+        }
+
+        const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('pt-BR', optionsDate);
+
+        let linhaChart, pizzaChart, barraChart, cepChart;
+
+        async function carregarRegistrosSupabase() {
+            const statusEl = document.getElementById('status-supabase');
+            
+            if (!supabaseClient) {
+                statusEl.className = "text-xs bg-slate-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 text-red-400";
+                statusEl.innerHTML = `<i class="fa-solid fa-circle text-[8px]"></i> Erro Conexão BD`;
+                return;
+            }
+
+            try {
+                await sincronizarFaltasNoAppDoCarregamento();
+                await carregarOutrosQuantitativos();
+
+                const { data, error } = await supabaseClient
+                    .from('ocorrencias_turno1')
+                    .select('*')
+                    .order('data', { ascending: false });
+
+                if (error) throw error;
+
+                registros = (data || []).map(item => ({
+                    id: item.id,
+                    data: item.data,
+                    sorter: item.sorter || 0,
+                    carregamento: item.carregamento || 0,
+                    faltas: item.faltas || 0,
+                    faltasNoApp: item.faltas_no_app || 0,
+                    pendSorter: item.pend_sorter || 0,
+                    pendCarregamento: item.pend_carregamento || 0,
+                    pendFaltas: item.pend_faltas || 0,
+                    qtdPendencias: (item.pend_sorter || 0) + (item.pend_carregamento || 0) + (item.pend_faltas || 0),
+                    observacoes: item.observacoes || '',
+                    responsavel: item.responsavel || 'Yens Farrapo'
+                }));
+
+                statusEl.className = "text-xs bg-slate-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 text-green-400";
+                statusEl.innerHTML = `<i class="fa-solid fa-circle text-[8px]"></i> Sincronizado`;
+
+                aplicarFiltroCalendario();
+            } catch (err) {
+                console.error("Erro ao carregar do Supabase:", err);
+                statusEl.className = "text-xs bg-slate-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 text-red-400";
+                statusEl.innerHTML = `<i class="fa-solid fa-circle text-[8px]"></i> Erro BD`;
+            }
+        }
+
+        async function carregarOutrosQuantitativos() {
+            if (!supabaseClient) return;
+            try {
+                // 1. Caixas aguardando reposição (puxando da tabela padrão do app de reposição)
+                const { count: countReposicao } = await supabaseClient
+                    .from('controle_reposicao_pares')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (countReposicao !== null) {
+                    document.getElementById('kpi-aguardando-reposicao').innerText = countReposicao;
+                }
+
+                // 2. Caixas sem externas (puxando da tabela de etiquetas/carregamento)
+                const { count: countSemExternas } = await supabaseClient
+                    .from('caixas_sem_externas')
+                    .select('*', { count: 'exact', head: true });
+
+                if (countSemExternas !== null) {
+                    document.getElementById('kpi-sem-externas').innerText = countSemExternas;
+                }
+            } catch (e) {
+                console.warn("Erro ao buscar outros quantitativos:", e);
+            }
+        }
+
+        async function sincronizarFaltasNoAppDoCarregamento() {
+            if (!supabaseClient) return;
+            try {
+                // Consulta os dados do aplicativo de carregamento na tabela de faltas ou portão
+                const { data: itensPortao, error } = await supabaseClient
+                    .from('controle_faltas_portao')
+                    .select('data_operacao, no_app');
+
+                if (error || !itensPortao) return;
+
+                const contagemPorData = {};
+                itensPortao.forEach(item => {
+                    const dt = item.data_operacao;
+                    if (!dt) return;
+                    if (!contagemPorData[dt]) contagemPorData[dt] = 0;
+                    // Verifica variações comuns de marcação "Sim" no app
+                    const valApp = String(item.no_app || '').trim().toLowerCase();
+                    if (valApp === 'sim' || valApp === 'true' || valApp === '1' || valApp === 's') {
+                        contagemPorData[dt]++;
+                    }
+                });
+
+                for (const [dt, qtd] of Object.entries(contagemPorData)) {
+                    await supabaseClient
+                        .from('ocorrencias_turno1')
+                        .update({ faltas_no_app: qtd })
+                        .eq('data', dt);
+                }
+            } catch (e) {
+                console.warn("Erro ao sincronizar faltas no app:", e);
+            }
+        }
+
+        function avaliarCategoria(tipo, valor) {
+            const v = Number(valor) || 0;
+            if (tipo === 'sorter') {
+                if (v <= 22) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
+                if (v <= 27) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
+                return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
+            }
+            if (tipo === 'carregamento') {
+                if (v <= 4) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
+                if (v <= 7) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
+                return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
+            }
+            if (tipo === 'faltas') {
+                if (v <= 3) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
+                if (v <= 5) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
+                return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
+            }
+            return { nivel: 1, rotulo: 'Bom', cor: 'green' };
+        }
+
+        function calcularStatusGeralDia(registro) {
+            if (!registro) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
+            
+            const stSorter = avaliarCategoria('sorter', registro.pendSorter || 0);
+            const stCarreg = avaliarCategoria('carregamento', registro.pendCarregamento || 0);
+            const stFaltas = avaliarCategoria('faltas', registro.pendFaltas || 0);
+
+            const maiorNivel = Math.max(stSorter.nivel, stCarreg.nivel, stFaltas.nivel);
+
+            if (maiorNivel === 3) return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
+            if (maiorNivel === 2) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
+            return { nivel: 1, rotulo: 'Bom', cor: 'green' };
+        }
+
+        function inicializarTema() {
+            const temaSalvo = localStorage.getItem('tema_turno1');
+            const temaBlue = localStorage.getItem('tema_blue_turno1');
+
+            if (temaBlue === 'true') {
+                document.body.classList.add('theme-blue');
+            }
+
+            if (temaSalvo === 'dark' || (!temaSalvo && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('icone-tema').className = "fa-solid fa-moon text-yellow-400";
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('icone-tema').className = "fa-solid fa-sun text-yellow-400";
+            }
+        }
+
+        function alternarTemaAzul() {
+            const body = document.body;
+            body.classList.toggle('theme-blue');
+            const estaAzul = body.classList.contains('theme-blue');
+            localStorage.setItem('tema_blue_turno1', estaAzul ? 'true' : 'false');
+            aplicarFiltroCalendario();
+        }
+
+        function alternarModoEscuro() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('tema_turno1', 'light');
+                document.getElementById('icone-tema').className = "fa-solid fa-sun text-yellow-400";
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('tema_turno1', 'dark');
+                document.getElementById('icone-tema').className = "fa-solid fa-moon text-yellow-400";
+            }
+            aplicarFiltroCalendario();
+        }
+
+        inicializarTema();
+
+        function mudarAba(aba) {
+            const secAcompanhamento = document.getElementById('secao-acompanhamento');
+            const secGraficos = document.getElementById('secao-graficos');
+            const btnAcompanhamento = document.getElementById('tab-acompanhamento');
+            const btnGraficos = document.getElementById('tab-graficos');
+
+            if (aba === 'acompanhamento') {
+                secAcompanhamento.classList.remove('hidden');
+                secGraficos.classList.add('hidden');
+                btnAcompanhamento.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-blue-600 text-white shadow flex items-center gap-2";
+                btnGraficos.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2";
+            } else {
+                secAcompanhamento.classList.add('hidden');
+                secGraficos.classList.remove('hidden');
+                btnGraficos.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-blue-600 text-white shadow flex items-center gap-2";
+                btnAcompanhamento.className = "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 flex items-center gap-2";
+                
+                aplicarFiltroCalendario();
+            }
+        }
+
+        function formatarDataBR(dataStr) {
+            if (!dataStr) return '';
+            const partes = dataStr.split('-');
+            if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+            return dataStr;
+        }
+
+        function aplicarFiltroCalendario() {
+            const dataInicio = document.getElementById('filtro-data-inicio').value;
+            const dataFim = document.getElementById('filtro-data-fim').value;
+            let dadosFiltrados = [...registros];
+
+            if (dataInicio && dataFim) {
+                dadosFiltrados = registros.filter(r => r.data >= dataInicio && r.data <= dataFim);
+            } else if (dataInicio) {
+                dadosFiltrados = registros.filter(r => r.data >= dataInicio);
+            } else if (dataFim) {
+                dadosFiltrados = registros.filter(r => r.data <= dataFim);
+            }
+
+            dadosFiltrados.sort((a, b) => new Date(a.data) - new Date(b.data));
+            document.getElementById('contador-linhas').innerText = `Total de ${dadosFiltrados.length} dias no intervalo.`;
+            processarDadosParaDashboard(dadosFiltrados);
+        }
+
+        function limparFiltroCalendario() {
+            document.getElementById('filtro-data-inicio').value = '';
+            document.getElementById('filtro-data-fim').value = '';
+            aplicarFiltroCalendario();
+        }
+
+        function processarDadosParaDashboard(dados) {
+            let tSorter = 0, tCarregamento = 0, tFaltas = 0, tFaltasNoApp = 0;
+            const lab = [], dSorter = [], dCarregamento = [], dFaltas = [], dFaltasNoApp = [], dTotais = [];
+            const tbody = document.getElementById('tabela-acompanhamento-corpo');
+            tbody.innerHTML = '';
+
+            dados.forEach(item => {
+                tSorter += item.sorter;
+                tCarregamento += item.carregamento;
+                tFaltas += item.faltas;
+                tFaltasNoApp += (item.faltasNoApp || 0);
+                const totalDia = item.sorter + item.carregamento + item.faltas;
+
+                lab.push(formatarDataBR(item.data));
+                dSorter.push(item.sorter);
+                dCarregamento.push(item.carregamento);
+                dFaltas.push(item.faltas);
+                dFaltasNoApp.push(item.faltasNoApp || 0);
+                dTotais.push(totalDia);
+
+                const statusGeral = calcularStatusGeralDia(item);
+                let badgeClass = "bg-green-100 text-green-800 dark:bg-green-950/80 dark:text-green-300 border-green-300";
+                if (statusGeral.cor === 'amber') badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300";
+                if (statusGeral.cor === 'red') badgeClass = "bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border-red-300";
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-2 px-3 font-medium">${formatarDataBR(item.data)}</td>
+                    <td class="py-2 px-3 text-red-600 dark:text-red-400 font-semibold">${item.sorter}</td>
+                    <td class="py-2 px-3 text-orange-600 dark:text-orange-400 font-semibold">${item.carregamento}</td>
+                    <td class="py-2 px-3 text-amber-600 dark:text-amber-400 font-semibold">${item.faltas}</td>
+                    <td class="py-2 px-3 text-cyan-600 dark:text-cyan-400 font-bold">${item.faltasNoApp || 0}</td>
+                    <td class="py-2 px-3 font-extrabold text-gray-800 dark:text-gray-100">${totalDia}</td>
+                    <td class="py-2 px-3 text-amber-600 dark:text-amber-400 font-bold">${item.qtdPendencias || 0}</td>
+                    <td class="py-2 px-3">
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${badgeClass}">${statusGeral.rotulo}</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('kpi-sorter').innerText = tSorter;
+            document.getElementById('kpi-carregamento-rasgadas').innerText = tCarregamento;
+            document.getElementById('kpi-faltas').innerText = tFaltas;
+            document.getElementById('kpi-faltas-no-app').innerText = tFaltasNoApp;
+            document.getElementById('kpi-total').innerText = (tSorter + tCarregamento + tFaltas);
+
+            renderizarGraficos(lab, dSorter, dCarregamento, dFaltas, dFaltasNoApp, tSorter, tCarregamento, tFaltas);
+            renderizarGraficoCEP(lab, dTotais);
+        }
+
+        function renderizarGraficoCEP(labels, dadosTotais) {
+            const isBlue = document.body.classList.contains('theme-blue');
+            const isDark = document.documentElement.classList.contains('dark') || isBlue;
+            const corTexto = isDark ? '#94a3b8' : '#4b5563';
+            const corGrid = isDark ? '#334155' : '#f3f4f6';
+            const badge = document.getElementById('cep-status-badge');
+
+            if (dadosTotais.length === 0) {
+                badge.innerText = "Sem dados";
+                if (cepChart) cepChart.destroy();
+                return;
+            }
+
+            const soma = dadosTotais.reduce((a, b) => a + b, 0);
+            const media = soma / dadosTotais.length;
+            const variancia = dadosTotais.reduce((a, b) => a + Math.pow(b - media, 2), 0) / (dadosTotais.length > 1 ? dadosTotais.length - 1 : 1);
+            const desvioPadrao = Math.sqrt(variancia);
+            const lsc = Math.round((media + 3 * desvioPadrao) * 10) / 10;
+
+            badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300 border";
+            badge.innerHTML = `<i class="fa-solid fa-circle-check text-green-600 mr-1"></i> Processo Sob Controle`;
+
+            const ctxCEP = document.getElementById('cepChart').getContext('2d');
+            if (cepChart) cepChart.destroy();
+
+            cepChart = new Chart(ctxCEP, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Total Ocorrências', data: dadosTotais, borderColor: '#3b82f6', borderWidth: 2, fill: false },
+                        { label: `LSC (${lsc})`, data: Array(dadosTotais.length).fill(lsc), borderColor: '#ef4444', borderDash: [6, 6], pointRadius: 0 },
+                        { label: `Média (${Math.round(media * 10) / 10})`, data: Array(dadosTotais.length).fill(media), borderColor: '#10b981', pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { color: corTexto, boxWidth: 8, font: { size: 9 } } } },
+                    scales: {
+                        x: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid } },
+                        y: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function renderizarGraficos(labels, dSorter, dCarregamento, dFaltas, dFaltasNoApp, tSorter, tCarregamento, tFaltas) {
+            const isBlue = document.body.classList.contains('theme-blue');
+            const isDark = document.documentElement.classList.contains('dark') || isBlue;
+            const corTexto = isDark ? '#94a3b8' : '#4b5563';
+            const corGrid = isDark ? '#334155' : '#f3f4f6';
+
+            const ctxLinha = document.getElementById('linhaChart').getContext('2d');
+            if (linhaChart) linhaChart.destroy();
+            linhaChart = new Chart(ctxLinha, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Sorter', data: dSorter, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true },
+                        { label: 'Carreg.', data: dCarregamento, borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.1)', fill: true },
+                        { label: 'Faltas', data: dFaltas, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true },
+                        { label: 'App', data: dFaltasNoApp, borderColor: '#06b6d4', backgroundColor: 'rgba(6, 182, 212, 0.1)', fill: true }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { labels: { color: corTexto, boxWidth: 8, font: { size: 9 } } } },
+                    scales: {
+                        x: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid } },
+                        y: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid } }
+                    }
+                }
+            });
+
+            const ctxPizza = document.getElementById('pizzaChart').getContext('2d');
+            if (pizzaChart) pizzaChart.destroy();
+            pizzaChart = new Chart(ctxPizza, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sorter', 'Carreg.', 'Faltas'],
+                    datasets: [{ data: [tSorter, tCarregamento, tFaltas], backgroundColor: ['#ef4444', '#f97316', '#f59e0b'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: corTexto, boxWidth: 8, font: { size: 9 } } } } }
+            });
+
+            const ctxBarra = document.getElementById('barraChart').getContext('2d');
+            if (barraChart) barraChart.destroy();
+            barraChart = new Chart(ctxBarra, {
+                type: 'bar',
+                data: {
+                    labels: ['Sorter', 'Carreg.', 'Faltas'],
+                    datasets: [{ data: [tSorter, tCarregamento, tFaltas], backgroundColor: ['#ef4444', '#f97316', '#f59e0b'] }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid } },
+                        y: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid } }
+                    }
+                }
+            });
+        }
+
+        function exportarExcel() {
+            if (registros.length === 0) { alert("Sem dados."); return; }
+            const dadosExport = registros.map(r => ({
+                "Data": formatarDataBR(r.data),
+                "Rasgadas (Sorter)": r.sorter,
+                "Rasgadas (Carregamento)": r.carregamento,
+                "Faltas no Carregamento": r.faltas,
+                "Faltas no App": r.faltasNoApp || 0,
+                "Total Ocorrências": r.sorter + r.carregamento + r.faltas
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(dadosExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Ocorrencias");
+            XLSX.writeFile(workbook, "Controle_Ocorrencias_Turno1.xlsx");
+        }
+
+        function baixarImagem() {
+            html2canvas(document.getElementById('painel-conteudo'), { scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'painel_ocorrencias.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        window.onload = function() { carregarRegistrosSupabase(); };
+    </script>
+</body>
+</html>
