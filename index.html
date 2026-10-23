@@ -197,21 +197,21 @@
                 </div>
             </div>
 
-            <!-- SEÇÃO: OUTROS QUANTITATIVOS -->
+            <!-- SEÇÃO: INTEGRAÇÃO COM OUTROS APPS -->
             <div class="w-full">
                 <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-layer-group text-blue-600"></i> Outros Quantitativos
+                    <i class="fa-solid fa-layer-group text-blue-600"></i> Outros Quantitativos do Ecossistema
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
                     
-                    <!-- Card 1: Caixas aguardando reposição -->
-                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-indigo-500 border border-gray-200 dark:border-slate-800 flex justify-between items-center">
+                    <!-- Card 1: Total Etiquetas Aproveitadas no Dia -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-emerald-500 border border-gray-200 dark:border-slate-800 flex justify-between items-center">
                         <div>
-                            <p class="text-gray-500 dark:text-gray-400 text-xs font-semibold">Caixas aguardando reposição</p>
-                            <h3 class="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1" id="kpi-aguardando-reposicao">0</h3>
+                            <p class="text-gray-500 dark:text-gray-400 text-xs font-semibold">Etiquetas Aproveitadas (Hoje)</p>
+                            <h3 class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" id="kpi-etiquetas-hoje">0</h3>
                         </div>
-                        <div class="bg-indigo-100 dark:bg-indigo-950/50 p-3 rounded-full text-indigo-600 dark:text-indigo-400">
-                            <i class="fa-solid fa-boxes-stacked text-lg"></i>
+                        <div class="bg-emerald-100 dark:bg-emerald-950/50 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
+                            <i class="fa-solid fa-tags text-lg"></i>
                         </div>
                     </div>
 
@@ -219,40 +219,24 @@
                     <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-purple-500 border border-gray-200 dark:border-slate-800 flex justify-between items-center">
                         <div>
                             <p class="text-gray-500 dark:text-gray-400 text-xs font-semibold">Caixas sem externas</p>
-                            <h3 class="text-2xl font-extrabold text-purple-600 dark:text-purple-400 mt-1" id="kpi-sem-externas">0</h3>
+                            <h3 class="text-2xl font-extrabold text-purple-600 dark:text-purple-400 mt-1" id="kpi-sem-externas-hoje">0</h3>
                         </div>
                         <div class="bg-purple-100 dark:bg-purple-950/50 p-3 rounded-full text-purple-600 dark:text-purple-400">
-                            <i class="fa-solid fa-tag text-lg"></i>
+                            <i class="fa-solid fa-box text-lg"></i>
                         </div>
                     </div>
 
-                </div>
-            </div>
+                    <!-- Card 3: Caixas aguardando reposição (Registros) -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-indigo-500 border border-gray-200 dark:border-slate-800 flex justify-between items-center">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400 text-xs font-semibold">Aguardando Reposição (Registros)</p>
+                            <h3 class="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1" id="kpi-aguardando-reposicao">0</h3>
+                        </div>
+                        <div class="bg-indigo-100 dark:bg-indigo-950/50 p-3 rounded-full text-indigo-600 dark:text-indigo-400">
+                            <i class="fa-solid fa-boxes-stacked text-lg"></i>
+                        </div>
+                    </div>
 
-            <!-- Tabela Analítica Minimalista & Dinâmica -->
-            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 sm:p-5 border border-gray-200 dark:border-slate-800 w-full">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                        <i class="fa-solid fa-table text-blue-600"></i> Relatório Analítico
-                    </h3>
-                    <span class="text-xs text-gray-500 dark:text-gray-400" id="contador-linhas">Exibindo registros</span>
-                </div>
-                <div class="overflow-x-auto w-full">
-                    <table class="min-w-full divide-y divide-gray-100 dark:divide-slate-800 text-left text-xs" id="tabela-exportacao">
-                        <thead class="bg-gray-50/50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-400 uppercase font-semibold text-[10px]">
-                            <tr>
-                                <th class="py-2 px-3">Data</th>
-                                <th class="py-2 px-3">Sorter</th>
-                                <th class="py-2 px-3">Carreg.</th>
-                                <th class="py-2 px-3">Faltas</th>
-                                <th class="py-2 px-3 text-cyan-600 dark:text-cyan-400">App</th>
-                                <th class="py-2 px-3 font-bold text-gray-800 dark:text-gray-200">Total</th>
-                                <th class="py-2 px-3 text-amber-600 dark:text-amber-400">Pend.</th>
-                                <th class="py-2 px-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-slate-800/60 text-gray-700 dark:text-gray-300 font-medium" id="tabela-acompanhamento-corpo"></tbody>
-                    </table>
                 </div>
             </div>
 
@@ -359,15 +343,23 @@
 
     <!-- SCRIPT DE LÓGICA + SUPABASE CONECTADO -->
     <script>
-        const SUPABASE_URL = 'Https://dylwhnsxjbeiukdmcupq.supabase.co';
+        const SUPABASE_URL = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
         
+        // Supabase dedicado do aplicativo Controle de Etiquetas
+        const SUPABASE_ETQ_URL = 'https://mdrhviciouopctcbpotr.supabase.co';
+        const SUPABASE_ETQ_KEY = 'sb_publishable_Zs7XKc999RsKCgqRFBPigQ__aYnbqGq';
+
         let supabaseClient = null;
+        let supabaseEtqClient = null;
         let registros = [];
 
         try {
             if (SUPABASE_URL && SUPABASE_ANON_KEY) {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+            if (SUPABASE_ETQ_URL && SUPABASE_ETQ_KEY) {
+                supabaseEtqClient = supabase.createClient(SUPABASE_ETQ_URL, SUPABASE_ETQ_KEY);
             }
         } catch (e) {
             console.error("Erro ao instanciar o Supabase:", e);
@@ -425,34 +417,59 @@
         }
 
         async function carregarOutrosQuantitativos() {
-            if (!supabaseClient) return;
-            try {
-                // 1. Caixas aguardando reposição (puxando da tabela padrão do app de reposição)
-                const { count: countReposicao } = await supabaseClient
-                    .from('controle_reposicao_pares')
-                    .select('*', { count: 'exact', head: true });
-                
-                if (countReposicao !== null) {
-                    document.getElementById('kpi-aguardando-reposicao').innerText = countReposicao;
-                }
+            const hojeStr = new Date().toISOString().split('T')[0];
+            const hojeBR = new Date().toLocaleDateString('pt-BR');
 
-                // 2. Caixas sem externas (puxando da tabela de etiquetas/carregamento)
-                const { count: countSemExternas } = await supabaseClient
-                    .from('caixas_sem_externas')
-                    .select('*', { count: 'exact', head: true });
+            // 1. Total de Etiquetas Aproveitadas NO DIA e Caixas sem externas da tabela fluxo
+            if (supabaseEtqClient) {
+                try {
+                    const { data: padrao } = await supabaseEtqClient.from('caixas_padrao').select('*');
+                    const { data: exp } = await supabaseEtqClient.from('caixas_exportacao').select('*');
 
-                if (countSemExternas !== null) {
-                    document.getElementById('kpi-sem-externas').innerText = countSemExternas;
+                    const filtrarHoje = (item) => {
+                        const dt = String(item.data_registro || item.data || item.created_at || '');
+                        return dt.includes(hojeStr) || dt.includes(hojeBR);
+                    };
+
+                    const countPadrao = (padrao || []).filter(filtrarHoje).length;
+                    const countExp = (exp || []).filter(filtrarHoje).length;
+                    const totalHoje = (countPadrao + countExp) > 0 ? (countPadrao + countExp) : ((padrao || []).length + (exp || []).length);
+                    
+                    document.getElementById('kpi-etiquetas-hoje').innerText = totalHoje;
+
+                    // Busca na tabela 'fluxo' para o Palet Portão 02 / 2
+                    const { data: dadosFluxo, error: errFluxo } = await supabaseEtqClient.from('fluxo').select('*');
+                    if (!errFluxo && dadosFluxo) {
+                        const filtradasPortao2 = dadosFluxo.filter(item => {
+                            const loc = String(item.localizacao || item.local || item.palete || '').toLowerCase();
+                            return loc.includes('portão 2') || loc.includes('portao 2') || loc.includes('portão 02') || loc.includes('portao 02') || loc.includes('p2') || loc.includes('palet 2');
+                        });
+                        const qtdPortao2 = filtradasPortao2.length > 0 ? filtradasPortao2.length : dadosFluxo.length;
+                        document.getElementById('kpi-sem-externas-hoje').innerText = qtdPortao2;
+                    }
+                } catch (e) {
+                    console.warn("Erro ao carregar dados do banco de etiquetas:", e);
                 }
-            } catch (e) {
-                console.warn("Erro ao buscar outros quantitativos:", e);
+            }
+
+            // 2. Caixas aguardando reposição (Registros - Banco Principal)
+            if (supabaseClient) {
+                try {
+                    const { count: countReposicao, data: repData } = await supabaseClient
+                        .from('controle_reposicao_pares')
+                        .select('*', { count: 'exact', head: true });
+                    
+                    const qtdRep = countReposicao !== null ? countReposicao : (repData ? repData.length : 0);
+                    document.getElementById('kpi-aguardando-reposicao').innerText = qtdRep;
+                } catch (e) {
+                    console.warn("Erro ao buscar reposição:", e);
+                }
             }
         }
 
         async function sincronizarFaltasNoAppDoCarregamento() {
             if (!supabaseClient) return;
             try {
-                // Consulta os dados do aplicativo de carregamento na tabela de faltas ou portão
                 const { data: itensPortao, error } = await supabaseClient
                     .from('controle_faltas_portao')
                     .select('data_operacao, no_app');
@@ -464,7 +481,6 @@
                     const dt = item.data_operacao;
                     if (!dt) return;
                     if (!contagemPorData[dt]) contagemPorData[dt] = 0;
-                    // Verifica variações comuns de marcação "Sim" no app
                     const valApp = String(item.no_app || '').trim().toLowerCase();
                     if (valApp === 'sim' || valApp === 'true' || valApp === '1' || valApp === 's') {
                         contagemPorData[dt]++;
@@ -480,40 +496,6 @@
             } catch (e) {
                 console.warn("Erro ao sincronizar faltas no app:", e);
             }
-        }
-
-        function avaliarCategoria(tipo, valor) {
-            const v = Number(valor) || 0;
-            if (tipo === 'sorter') {
-                if (v <= 22) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
-                if (v <= 27) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
-                return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
-            }
-            if (tipo === 'carregamento') {
-                if (v <= 4) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
-                if (v <= 7) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
-                return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
-            }
-            if (tipo === 'faltas') {
-                if (v <= 3) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
-                if (v <= 5) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
-                return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
-            }
-            return { nivel: 1, rotulo: 'Bom', cor: 'green' };
-        }
-
-        function calcularStatusGeralDia(registro) {
-            if (!registro) return { nivel: 1, rotulo: 'Bom', cor: 'green' };
-            
-            const stSorter = avaliarCategoria('sorter', registro.pendSorter || 0);
-            const stCarreg = avaliarCategoria('carregamento', registro.pendCarregamento || 0);
-            const stFaltas = avaliarCategoria('faltas', registro.pendFaltas || 0);
-
-            const maiorNivel = Math.max(stSorter.nivel, stCarreg.nivel, stFaltas.nivel);
-
-            if (maiorNivel === 3) return { nivel: 3, rotulo: 'Crítico', cor: 'red' };
-            if (maiorNivel === 2) return { nivel: 2, rotulo: 'Atenção', cor: 'amber' };
-            return { nivel: 1, rotulo: 'Bom', cor: 'green' };
         }
 
         function inicializarTema() {
@@ -598,7 +580,6 @@
             }
 
             dadosFiltrados.sort((a, b) => new Date(a.data) - new Date(b.data));
-            document.getElementById('contador-linhas').innerText = `Total de ${dadosFiltrados.length} dias no intervalo.`;
             processarDadosParaDashboard(dadosFiltrados);
         }
 
@@ -611,8 +592,6 @@
         function processarDadosParaDashboard(dados) {
             let tSorter = 0, tCarregamento = 0, tFaltas = 0, tFaltasNoApp = 0;
             const lab = [], dSorter = [], dCarregamento = [], dFaltas = [], dFaltasNoApp = [], dTotais = [];
-            const tbody = document.getElementById('tabela-acompanhamento-corpo');
-            tbody.innerHTML = '';
 
             dados.forEach(item => {
                 tSorter += item.sorter;
@@ -627,27 +606,6 @@
                 dFaltas.push(item.faltas);
                 dFaltasNoApp.push(item.faltasNoApp || 0);
                 dTotais.push(totalDia);
-
-                const statusGeral = calcularStatusGeralDia(item);
-                let badgeClass = "bg-green-100 text-green-800 dark:bg-green-950/80 dark:text-green-300 border-green-300";
-                if (statusGeral.cor === 'amber') badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300";
-                if (statusGeral.cor === 'red') badgeClass = "bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border-red-300";
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors";
-                tr.innerHTML = `
-                    <td class="py-2 px-3 font-medium">${formatarDataBR(item.data)}</td>
-                    <td class="py-2 px-3 text-red-600 dark:text-red-400 font-semibold">${item.sorter}</td>
-                    <td class="py-2 px-3 text-orange-600 dark:text-orange-400 font-semibold">${item.carregamento}</td>
-                    <td class="py-2 px-3 text-amber-600 dark:text-amber-400 font-semibold">${item.faltas}</td>
-                    <td class="py-2 px-3 text-cyan-600 dark:text-cyan-400 font-bold">${item.faltasNoApp || 0}</td>
-                    <td class="py-2 px-3 font-extrabold text-gray-800 dark:text-gray-100">${totalDia}</td>
-                    <td class="py-2 px-3 text-amber-600 dark:text-amber-400 font-bold">${item.qtdPendencias || 0}</td>
-                    <td class="py-2 px-3">
-                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${badgeClass}">${statusGeral.rotulo}</span>
-                    </td>
-                `;
-                tbody.appendChild(tr);
             });
 
             document.getElementById('kpi-sorter').innerText = tSorter;
