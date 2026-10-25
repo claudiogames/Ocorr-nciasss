@@ -44,7 +44,6 @@
             color: #f8fafc !important;
         }
         
-        /* Estilo específico para impressão do Relatório Argumentativo Profissional */
         @media print {
             body * {
                 visibility: hidden;
@@ -53,7 +52,7 @@
                 visibility: visible;
             }
             #relatorio-impressao {
-                display: block !important; /* Garante que o relatório aparece na folha impressa */
+                display: block !important;
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -94,7 +93,6 @@
                 <div id="info-filtro-ativo" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-slate-700 hidden sm:block">
                     Exibindo: Todos os dados
                 </div>
-                <!-- Botão de Gerar Relatório Argumentativo e Imprimir -->
                 <button onclick="gerarRelatorioImpresso()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-md">
                     <i class="fa-solid fa-file-lines"></i> Relatório & Impressão
                 </button>
@@ -193,7 +191,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Total Ocorrências</p>
-                        <h3 class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" id="kpi-total">0</h3>
+                        <h3 class="text-xl font-extrabold text-emerald-600 dark:text-gray-100 mt-1" id="kpi-total">0</h3>
                     </div>
                     <div class="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-full text-emerald-600 dark:text-emerald-400">
                         <i class="fa-solid fa-calculator text-sm"></i>
@@ -241,7 +239,7 @@
             <div style="margin-bottom: 20px; background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #111;">1. Sumário Executivo e Parâmetros do Período</h3>
                 <p style="margin: 0; font-size: 12px; line-height: 1.5;" id="print-texto-periodo">
-                    O presente relatório consolida os apontamentos estatísticos e volumétricos registrados no primeiro turno de operação do Portão 1 do Centro de Distribuição. O escopo visa monitorar desvios operacionais, falhas de conferência e integridade de volumes.
+                    O presente relatório consolida os apontamentos estatísticos e volumétricos registrados no primeiro turno de operação do Portão 1 do Centro de Distribuição.
                 </p>
             </div>
 
@@ -264,10 +262,10 @@
             <div style="margin-bottom: 30px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #111;">3. Análise Argumentativa e Diagnóstico Operacional</h3>
                 <p style="margin: 0 0 8px 0; font-size: 12px; line-height: 1.5;" id="print-argumento-1">
-                    Durante o período analisado, observou-se variação no fluxo de processamento. A incidência de ocorrências concentra-se primordialmente nos registros de divergências de carregamento e faltas reportadas, exigindo rigor no alinhamento de conferência na doca.
+                    Durante o período analisado, observou-se variação no fluxo de processamento. A incidência de ocorrências concentra-se primordialmente nos registros de divergências de carregamento e faltas reportadas.
                 </p>
                 <p style="margin: 0; font-size: 12px; line-height: 1.5;" id="print-argumento-2">
-                    As ações corretivas focam na rastreabilidade estrita por SSCC e na validação em tempo real por meio da ferramenta integrada de exceções, mitigando perdas de inventário e garantindo a transparência com o setor produtivo.
+                    As ações corretivas focam na rastreabilidade estrita por SSCC e na validação em tempo real para blindar a operação contra contestações indevidas.
                 </p>
             </div>
 
@@ -308,6 +306,7 @@
                 const { data, error } = await supabaseClient
                     .from('ocorrencias_turno1')
                     .select('*')
+                    .gte('data', '2026-10-18') // Filtro automático invisível a partir de 18/10
                     .order('data', { ascending: false });
 
                 if (error) throw error;
@@ -334,7 +333,8 @@
             try {
                 const { data: itensPortao, error } = await supabaseClient
                     .from('controle_faltas_portao')
-                    .select('data_operacao, no_app');
+                    .select('data_operacao, no_app')
+                    .gte('data_operacao', '2026-10-18');
 
                 if (error || !itensPortao) return;
 
@@ -373,14 +373,17 @@
             const infoFiltro = document.getElementById('info-filtro-ativo');
             let dadosFiltrados = [...registros];
 
+            // Garante o corte automático invisível a partir de 18/10/2026
+            dadosFiltrados = dadosFiltrados.filter(r => r.data >= '2026-10-18');
+
             if (dataInicio && dataFim) {
-                dadosFiltrados = registros.filter(r => r.data >= dataInicio && r.data <= dataFim);
+                dadosFiltrados = dadosFiltrados.filter(r => r.data >= dataInicio && r.data <= dataFim);
                 infoFiltro.innerText = `Exibindo de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}`;
             } else if (dataInicio) {
-                dadosFiltrados = registros.filter(r => r.data >= dataInicio);
+                dadosFiltrados = dadosFiltrados.filter(r => r.data >= dataInicio);
                 infoFiltro.innerText = `Exibindo a partir de ${formatarDataBR(dataInicio)}`;
             } else if (dataFim) {
-                dadosFiltrados = registros.filter(r => r.data <= dataFim);
+                dadosFiltrados = dadosFiltrados.filter(r => r.data <= dataFim);
                 infoFiltro.innerText = `Exibindo até ${formatarDataBR(dataFim)}`;
             } else {
                 infoFiltro.innerText = `Exibindo: Todos os dados`;
@@ -518,9 +521,9 @@
             const dataInicio = document.getElementById('filtro-data-inicio').value;
             const dataFim = document.getElementById('filtro-data-fim').value;
             
-            let textoPeriodoStr = "Consolidado geral acumulado de todas as ocorrências registradas na operação do Portão 1 CD.";
+            let textoPeriodoStr = "Consolidado geral acumulado de todas as ocorrências registradas.";
             if (dataInicio && dataFim) {
-                textoPeriodoStr = `Período filtrado e auditado de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}.`;
+                textoPeriodoStr = `Período auditado de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}.`;
             }
 
             document.getElementById('print-data-geracao').innerText = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
