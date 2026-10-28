@@ -138,7 +138,7 @@
         </section>
 
         <!-- Cards de Indicadores (KPIs) PRINCIPAIS -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 w-full">
             <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-emerald-500 border border-gray-200 dark:border-slate-800">
                 <div class="flex justify-between items-center">
                     <div>
@@ -183,6 +183,19 @@
                     </div>
                     <div class="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-full text-emerald-600 dark:text-emerald-400">
                         <i class="fa-solid fa-mobile-screen-button text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Faltas Requisitadas (Puxa o Total Geral exato usando a nova chave) -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-teal-500 border border-gray-200 dark:border-slate-800">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Faltas Requisitadas</p>
+                        <h3 class="text-xl font-extrabold text-teal-600 dark:text-teal-400 mt-1" id="kpi-faltas-requisitadas">0</h3>
+                    </div>
+                    <div class="bg-teal-100 dark:bg-teal-950/50 p-2 rounded-full text-teal-600 dark:text-teal-400">
+                        <i class="fa-solid fa-clipboard-list text-sm"></i>
                     </div>
                 </div>
             </div>
@@ -285,13 +298,22 @@
         const SUPABASE_URL = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
 
+        // Chave específica para a tabela caixas_misturadas
+        const SUPABASE_URL_CAIXAS = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
+        const SUPABASE_KEY_CAIXAS = 'sb_publishable_Zs7XKc999RsKCgqRFBPigQ__aYnbqGq';
+
         let supabaseClient = null;
+        let supabaseCaixasClient = null;
         let registros = [];
-        let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tFaltasNoApp: 0, total: 0 };
+        let totalCaixasMisturadasGeral = 0;
+        let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tFaltasNoApp: 0, tFaltasRequisitadas: 0, total: 0 };
 
         try {
             if (SUPABASE_URL && SUPABASE_ANON_KEY) {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+            if (SUPABASE_URL_CAIXAS && SUPABASE_KEY_CAIXAS) {
+                supabaseCaixasClient = supabase.createClient(SUPABASE_URL_CAIXAS, SUPABASE_KEY_CAIXAS);
             }
         } catch (e) {
             console.error("Erro ao instanciar o Supabase:", e);
@@ -301,12 +323,13 @@
 
         async function carregarRegistrosSupabase() {
             try {
-                await sincronizarFaltasNoAppDoCarregamento();
+                // Busca o total geral de registros da tabela caixas_misturadas usando a nova chave
+                await buscarTotalGeralCaixasMisturadas();
 
                 const { data, error } = await supabaseClient
                     .from('ocorrencias_turno1')
                     .select('*')
-                    .gte('data', '2026-10-18') // Filtro automático invisível a partir de 18/10
+                    .gte('data', '2026-10-18')
                     .order('data', { ascending: false });
 
                 if (error) throw error;
@@ -328,35 +351,21 @@
             }
         }
 
-        async function sincronizarFaltasNoAppDoCarregamento() {
-            if (!supabaseClient) return;
+        async function buscarTotalGeralCaixasMisturadas() {
+            if (!supabaseCaixasClient) return;
             try {
-                const { data: itensPortao, error } = await supabaseClient
-                    .from('controle_faltas_portao')
-                    .select('data_operacao, no_app')
-                    .gte('data_operacao', '2026-10-18');
+                const { count, error, data } = await supabaseCaixasClient
+                    .from('caixas_misturadas')
+                    .select('*', { count: 'exact' });
 
-                if (error || !itensPortao) return;
-
-                const contagemPorData = {};
-                itensPortao.forEach(item => {
-                    const dt = item.data_operacao;
-                    if (!dt) return;
-                    if (!contagemPorData[dt]) contagemPorData[dt] = 0;
-                    const valApp = String(item.no_app || '').trim().toLowerCase();
-                    if (valApp === 'sim' || valApp === 'true' || valApp === '1' || valApp === 's') {
-                        contagemPorData[dt]++;
-                    }
-                });
-
-                for (const [dt, qtd] of Object.entries(contagemPorData)) {
-                    await supabaseClient
-                        .from('ocorrencias_turno1')
-                        .update({ faltas_no_app: qtd })
-                        .eq('data', dt);
+                if (!error) {
+                    totalCaixasMisturadasGeral = count !== null ? count : (data ? data.length : 0);
+                } else {
+                    totalCaixasMisturadasGeral = 0;
                 }
             } catch (e) {
-                console.warn("Erro ao sincronizar faltas no app:", e);
+                console.warn("Erro ao buscar total de caixas misturadas:", e);
+                totalCaixasMisturadasGeral = 0;
             }
         }
 
@@ -367,13 +376,14 @@
             return dataStr;
         }
 
-        function aplicarFiltroCalendario() {
+        async function aplicarFiltroCalendario() {
+            await buscarTotalGeralCaixasMisturadas();
+
             const dataInicio = document.getElementById('filtro-data-inicio').value;
             const dataFim = document.getElementById('filtro-data-fim').value;
             const infoFiltro = document.getElementById('info-filtro-ativo');
             let dadosFiltrados = [...registros];
 
-            // Garante o corte automático invisível a partir de 18/10/2026
             dadosFiltrados = dadosFiltrados.filter(r => r.data >= '2026-10-18');
 
             if (dataInicio && dataFim) {
@@ -415,35 +425,36 @@
                 dFaltas.push(item.faltas);
             });
 
-            const totalGeral = tSorter + tCarregamento + tFaltas + tFaltasNoApp;
+            const tFaltasRequisitadas = totalCaixasMisturadasGeral;
+            const totalGeral = tSorter + tCarregamento + tFaltas + tFaltasNoApp + tFaltasRequisitadas;
 
-            cacheUltimosDados = { tSorter, tCarregamento, tFaltas, tFaltasNoApp, total: totalGeral };
+            cacheUltimosDados = { tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas, total: totalGeral };
 
             document.getElementById('kpi-sorter').innerText = tSorter;
             document.getElementById('kpi-carregamento-rasgadas').innerText = tCarregamento;
             document.getElementById('kpi-faltas').innerText = tFaltas;
             document.getElementById('kpi-faltas-no-app').innerText = tFaltasNoApp;
+            document.getElementById('kpi-faltas-requisitadas').innerText = tFaltasRequisitadas;
             document.getElementById('kpi-total').innerText = totalGeral;
 
-            renderizarGraficosVerdes(lab, tSorter, tCarregamento, tFaltas, tFaltasNoApp, lab, dSorter, dCarregamento, dFaltas);
+            renderizarGraficosVerdes(lab, tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas, lab, dSorter, dCarregamento, dFaltas);
         }
 
-        function renderizarGraficosVerdes(labels, tSorter, tCarregamento, tFaltas, tFaltasNoApp, diasLabels, diasSorter, diasCarregamento, diasFaltas) {
+        function renderizarGraficosVerdes(labels, tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas, diasLabels, diasSorter, diasCarregamento, diasFaltas) {
             const isDark = document.documentElement.classList.contains('dark');
             const corTexto = isDark ? '#94a3b8' : '#4b5563';
             const corGrid = isDark ? '#334155' : '#f3f4f6';
 
-            const greenPalette = ['#10b981', '#059669', '#34d399', '#047857'];
+            const greenPalette = ['#10b981', '#059669', '#34d399', '#047857', '#0d9488'];
 
-            // Gráfico 1: Volume por Tipo (Doughnut)
             const ctx1 = document.getElementById('chartQuant1').getContext('2d');
             if (chartQuant1) chartQuant1.destroy();
             chartQuant1 = new Chart(ctx1, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Sorter', 'Carreg.', 'Faltas', 'App'],
+                    labels: ['Sorter', 'Carreg.', 'Faltas', 'App', 'Requisitadas'],
                     datasets: [{
-                        data: [tSorter, tCarregamento, tFaltas, tFaltasNoApp],
+                        data: [tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas],
                         backgroundColor: greenPalette,
                         borderWidth: 0
                     }]
@@ -454,7 +465,6 @@
                 }
             });
 
-            // Gráfico 2: Evolução por Dias Reais (Linha)
             const ctx2 = document.getElementById('chartQuant2').getContext('2d');
             if (chartQuant2) chartQuant2.destroy();
             
@@ -484,7 +494,6 @@
                 }
             });
 
-            // Gráfico 3: Ocorrências mais Rotineiras (Ranking Horizontal)
             const ctx3 = document.getElementById('chartQuant3').getContext('2d');
             if (chartQuant3) chartQuant3.destroy();
 
@@ -492,7 +501,8 @@
                 { nome: 'Faltas Carreg.', qtd: tFaltas },
                 { nome: 'Rasgadas Carreg.', qtd: tCarregamento },
                 { nome: 'Rasgadas Sorter', qtd: tSorter },
-                { nome: 'Faltas no App', qtd: tFaltasNoApp }
+                { nome: 'Faltas no App', qtd: tFaltasNoApp },
+                { nome: 'Faltas Requisitadas', qtd: tFaltasRequisitadas }
             ].sort((a, b) => b.qtd - a.qtd);
 
             chartQuant3 = new Chart(ctx3, {
@@ -554,6 +564,11 @@
                     <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tFaltasNoApp}</td>
                     <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tFaltasNoApp)}</td>
                 </tr>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 6px;">Faltas Requisitadas (Caixas Misturadas)</td>
+                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tFaltasRequisitadas}</td>
+                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tFaltasRequisitadas)}</td>
+                </tr>
                 <tr style="background: #f9fafb; font-weight: bold;">
                     <td style="padding: 8px;">Total Geral de Ocorrências</td>
                     <td style="padding: 8px; text-align: center;">${cacheUltimosDados.total}</td>
@@ -575,6 +590,7 @@
                 "Rasgadas (Carregamento)": r.carregamento,
                 "Faltas no Carregamento": r.faltas,
                 "Faltas no App": r.faltasNoApp || 0,
+                "Faltas Requisitadas": cacheUltimosDados.tFaltasRequisitadas || 0,
                 "Total Ocorrências": r.sorter + r.carregamento + r.faltas + (r.faltasNoApp || 0)
             }));
             const worksheet = XLSX.utils.json_to_sheet(dadosExport);
