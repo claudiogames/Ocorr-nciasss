@@ -99,10 +99,9 @@
             </div>
         </div>
 
-        <!-- ================= 3 GRÁFICOS QUANTITATIVOS REORGANIZADOS ================= -->
+        <!-- ================= 3 GRÁFICOS QUANTITATIVOS ================= -->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
             
-            <!-- Gráfico 1: Ocorrências mais Rotineiras -->
             <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ocorrências mais Rotineiras</h2>
@@ -113,7 +112,6 @@
                 </div>
             </div>
 
-            <!-- Gráfico 2: Evolução por Período (Datas Reais) -->
             <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Evolução por Período (Dias)</h2>
@@ -124,7 +122,6 @@
                 </div>
             </div>
 
-            <!-- Gráfico 3: Volume por Tipo (Pizza/Rosca) -->
             <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between">
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Volume por Tipo</h2>
@@ -175,6 +172,18 @@
                 </div>
             </div>
 
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-orange-500 border border-gray-200 dark:border-slate-800">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Requisitadas</p>
+                        <h3 class="text-xl font-extrabold text-orange-500 mt-1" id="kpi-requisitadas">0</h3>
+                    </div>
+                    <div class="bg-orange-100 dark:bg-orange-950/50 p-2 rounded-full text-orange-500">
+                        <i class="fa-solid fa-fire text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-emerald-500 border border-gray-200 dark:border-slate-800">
                 <div class="flex justify-between items-center">
                     <div>
@@ -183,19 +192,6 @@
                     </div>
                     <div class="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-full text-emerald-600 dark:text-emerald-400">
                         <i class="fa-solid fa-mobile-screen-button text-sm"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card: Faltas Requisitadas (Puxa o Total Geral exato usando a nova chave) -->
-            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-teal-500 border border-gray-200 dark:border-slate-800">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Faltas Requisitadas</p>
-                        <h3 class="text-xl font-extrabold text-teal-600 dark:text-teal-400 mt-1" id="kpi-faltas-requisitadas">0</h3>
-                    </div>
-                    <div class="bg-teal-100 dark:bg-teal-950/50 p-2 rounded-full text-teal-600 dark:text-teal-400">
-                        <i class="fa-solid fa-clipboard-list text-sm"></i>
                     </div>
                 </div>
             </div>
@@ -236,7 +232,7 @@
 
     </div>
 
-    <!-- ELEMENTO OCULTO PARA IMPRESSÃO DE RELATÓRIO PROFISSIONAL ARGUMENTATIVO -->
+    <!-- ELEMENTO OCULTO PARA IMPRESSÃO DE RELATÓRIO -->
     <div id="relatorio-impressao" class="hidden">
         <div style="font-family: Arial, sans-serif; color: #000; padding: 20px; max-width: 800px; margin: 0 auto;">
             <div style="border-bottom: 2px solid #10b981; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -266,9 +262,7 @@
                             <th style="padding: 8px; text-align: right;">Participação Relativa</th>
                         </tr>
                     </thead>
-                    <tbody id="print-tabela-corpo">
-                        <!-- Preenchido via JS -->
-                    </tbody>
+                    <tbody id="print-tabela-corpo"></tbody>
                 </table>
             </div>
 
@@ -298,22 +292,14 @@
         const SUPABASE_URL = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
 
-        // Chave específica para a tabela caixas_misturadas
-        const SUPABASE_URL_CAIXAS = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
-        const SUPABASE_KEY_CAIXAS = 'sb_publishable_Zs7XKc999RsKCgqRFBPigQ__aYnbqGq';
-
         let supabaseClient = null;
-        let supabaseCaixasClient = null;
         let registros = [];
-        let totalCaixasMisturadasGeral = 0;
-        let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tFaltasNoApp: 0, tFaltasRequisitadas: 0, total: 0 };
+        let cacheRequisitadasPorData = {};
+        let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tRequisitadas: 0, tFaltasNoApp: 0, total: 0 };
 
         try {
             if (SUPABASE_URL && SUPABASE_ANON_KEY) {
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-            if (SUPABASE_URL_CAIXAS && SUPABASE_KEY_CAIXAS) {
-                supabaseCaixasClient = supabase.createClient(SUPABASE_URL_CAIXAS, SUPABASE_KEY_CAIXAS);
             }
         } catch (e) {
             console.error("Erro ao instanciar o Supabase:", e);
@@ -323,8 +309,7 @@
 
         async function carregarRegistrosSupabase() {
             try {
-                // Busca o total geral de registros da tabela caixas_misturadas usando a nova chave
-                await buscarTotalGeralCaixasMisturadas();
+                await sincronizarDadosCarregamento();
 
                 const { data, error } = await supabaseClient
                     .from('ocorrencias_turno1')
@@ -340,6 +325,7 @@
                     sorter: item.sorter || 0,
                     carregamento: item.carregamento || 0,
                     faltas: item.faltas || 0,
+                    requisitadas: cacheRequisitadasPorData[item.data] || 0,
                     faltasNoApp: item.faltas_no_app || 0,
                     observacoes: item.observacoes || '',
                     responsavel: item.responsavel || 'Yens Farrapo'
@@ -351,264 +337,25 @@
             }
         }
 
-        async function buscarTotalGeralCaixasMisturadas() {
-            if (!supabaseCaixasClient) return;
+        async function sincronizarDadosCarregamento() {
+            if (!supabaseClient) return;
             try {
-                const { count, error, data } = await supabaseCaixasClient
-                    .from('caixas_misturadas')
-                    .select('*', { count: 'exact' });
+                const { data: itensPortao, error } = await supabaseClient
+                    .from('controle_faltas_portao')
+                    .select('data_operacao, no_app, requisitada')
+                    .gte('data_operacao', '2026-10-18');
 
-                if (!error) {
-                    totalCaixasMisturadasGeral = count !== null ? count : (data ? data.length : 0);
-                } else {
-                    totalCaixasMisturadasGeral = 0;
-                }
-            } catch (e) {
-                console.warn("Erro ao buscar total de caixas misturadas:", e);
-                totalCaixasMisturadasGeral = 0;
-            }
-        }
+                if (error || !itensPortao) return;
 
-        function formatarDataBR(dataStr) {
-            if (!dataStr) return '';
-            const partes = dataStr.split('-');
-            if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
-            return dataStr;
-        }
+                const contagemAppPorData = {};
+                const contagemReqPorData = {};
 
-        async function aplicarFiltroCalendario() {
-            await buscarTotalGeralCaixasMisturadas();
+                itensPortao.forEach(item => {
+                    const dt = item.data_operacao;
+                    if (!dt) return;
 
-            const dataInicio = document.getElementById('filtro-data-inicio').value;
-            const dataFim = document.getElementById('filtro-data-fim').value;
-            const infoFiltro = document.getElementById('info-filtro-ativo');
-            let dadosFiltrados = [...registros];
-
-            dadosFiltrados = dadosFiltrados.filter(r => r.data >= '2026-10-18');
-
-            if (dataInicio && dataFim) {
-                dadosFiltrados = dadosFiltrados.filter(r => r.data >= dataInicio && r.data <= dataFim);
-                infoFiltro.innerText = `Exibindo de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}`;
-            } else if (dataInicio) {
-                dadosFiltrados = dadosFiltrados.filter(r => r.data >= dataInicio);
-                infoFiltro.innerText = `Exibindo a partir de ${formatarDataBR(dataInicio)}`;
-            } else if (dataFim) {
-                dadosFiltrados = dadosFiltrados.filter(r => r.data <= dataFim);
-                infoFiltro.innerText = `Exibindo até ${formatarDataBR(dataFim)}`;
-            } else {
-                infoFiltro.innerText = `Exibindo: Todos os dados`;
-            }
-
-            dadosFiltrados.sort((a, b) => new Date(a.data) - new Date(b.data));
-            processarDadosParaDashboard(dadosFiltrados);
-        }
-
-        function limparFiltroCalendario() {
-            document.getElementById('filtro-data-inicio').value = '';
-            document.getElementById('filtro-data-fim').value = '';
-            aplicarFiltroCalendario();
-        }
-
-        function processarDadosParaDashboard(dados) {
-            let tSorter = 0, tCarregamento = 0, tFaltas = 0, tFaltasNoApp = 0;
-            const lab = [], dSorter = [], dCarregamento = [], dFaltas = [];
-
-            dados.forEach(item => {
-                tSorter += item.sorter;
-                tCarregamento += item.carregamento;
-                tFaltas += item.faltas;
-                tFaltasNoApp += (item.faltasNoApp || 0);
-
-                lab.push(formatarDataBR(item.data));
-                dSorter.push(item.sorter);
-                dCarregamento.push(item.carregamento);
-                dFaltas.push(item.faltas);
-            });
-
-            const tFaltasRequisitadas = totalCaixasMisturadasGeral;
-            const totalGeral = tSorter + tCarregamento + tFaltas + tFaltasNoApp + tFaltasRequisitadas;
-
-            cacheUltimosDados = { tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas, total: totalGeral };
-
-            document.getElementById('kpi-sorter').innerText = tSorter;
-            document.getElementById('kpi-carregamento-rasgadas').innerText = tCarregamento;
-            document.getElementById('kpi-faltas').innerText = tFaltas;
-            document.getElementById('kpi-faltas-no-app').innerText = tFaltasNoApp;
-            document.getElementById('kpi-faltas-requisitadas').innerText = tFaltasRequisitadas;
-            document.getElementById('kpi-total').innerText = totalGeral;
-
-            renderizarGraficosVerdes(lab, tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas, lab, dSorter, dCarregamento, dFaltas);
-        }
-
-        function renderizarGraficosVerdes(labels, tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas, diasLabels, diasSorter, diasCarregamento, diasFaltas) {
-            const isDark = document.documentElement.classList.contains('dark');
-            const corTexto = isDark ? '#94a3b8' : '#4b5563';
-            const corGrid = isDark ? '#334155' : '#f3f4f6';
-
-            const greenPalette = ['#10b981', '#059669', '#34d399', '#047857', '#0d9488'];
-
-            const ctx1 = document.getElementById('chartQuant1').getContext('2d');
-            if (chartQuant1) chartQuant1.destroy();
-            chartQuant1 = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Sorter', 'Carreg.', 'Faltas', 'App', 'Requisitadas'],
-                    datasets: [{
-                        data: [tSorter, tCarregamento, tFaltas, tFaltasNoApp, tFaltasRequisitadas],
-                        backgroundColor: greenPalette,
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: corTexto, boxWidth: 8, font: { size: 9 } } } }
-                }
-            });
-
-            const ctx2 = document.getElementById('chartQuant2').getContext('2d');
-            if (chartQuant2) chartQuant2.destroy();
-            
-            const somaDiasTotais = diasLabels.map((_, i) => (diasSorter[i] || 0) + (diasCarregamento[i] || 0) + (diasFaltas[i] || 0));
-
-            chartQuant2 = new Chart(ctx2, {
-                type: 'line',
-                data: {
-                    labels: diasLabels,
-                    datasets: [{
-                        label: 'Total Ocorrências',
-                        data: somaDiasTotais,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid } },
-                        y: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid }, beginAtZero: true }
-                    }
-                }
-            });
-
-            const ctx3 = document.getElementById('chartQuant3').getContext('2d');
-            if (chartQuant3) chartQuant3.destroy();
-
-            const ranking = [
-                { nome: 'Faltas Carreg.', qtd: tFaltas },
-                { nome: 'Rasgadas Carreg.', qtd: tCarregamento },
-                { nome: 'Rasgadas Sorter', qtd: tSorter },
-                { nome: 'Faltas no App', qtd: tFaltasNoApp },
-                { nome: 'Faltas Requisitadas', qtd: tFaltasRequisitadas }
-            ].sort((a, b) => b.qtd - a.qtd);
-
-            chartQuant3 = new Chart(ctx3, {
-                type: 'bar',
-                indexAxis: 'y',
-                data: {
-                    labels: ranking.map(r => r.nome),
-                    datasets: [{
-                        data: ranking.map(r => r.qtd),
-                        backgroundColor: greenPalette,
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: corTexto, font: { size: 9 } }, grid: { color: corGrid }, beginAtZero: true },
-                        y: { ticks: { color: corTexto, font: { size: 9 } }, grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        function gerarRelatorioImpresso() {
-            const dataInicio = document.getElementById('filtro-data-inicio').value;
-            const dataFim = document.getElementById('filtro-data-fim').value;
-            
-            let textoPeriodoStr = "Consolidado geral acumulado de todas as ocorrências registradas.";
-            if (dataInicio && dataFim) {
-                textoPeriodoStr = `Período auditado de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}.`;
-            }
-
-            document.getElementById('print-data-geracao').innerText = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
-            document.getElementById('print-texto-periodo').innerText = `O presente relatório gerencial consolida os apontamentos quantitativos do 1º Turno do Portão 1 CD. ${textoPeriodoStr} O objetivo é subsidiar a tomada de decisão logística e apontar desvios operacionais.`;
-
-            const total = cacheUltimosDados.total || 1;
-            const calcPerc = (val) => ((val / total) * 100).toFixed(1) + '%';
-
-            const tbody = document.getElementById('print-tabela-corpo');
-            tbody.innerHTML = `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px;">Faltas no Carregamento</td>
-                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tFaltas}</td>
-                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tFaltas)}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px;">Rasgadas no Carregamento</td>
-                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tCarregamento}</td>
-                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tCarregamento)}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px;">Rasgadas no Sorter</td>
-                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tSorter}</td>
-                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tSorter)}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px;">Faltas Registradas no App</td>
-                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tFaltasNoApp}</td>
-                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tFaltasNoApp)}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px;">Faltas Requisitadas (Caixas Misturadas)</td>
-                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tFaltasRequisitadas}</td>
-                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tFaltasRequisitadas)}</td>
-                </tr>
-                <tr style="background: #f9fafb; font-weight: bold;">
-                    <td style="padding: 8px;">Total Geral de Ocorrências</td>
-                    <td style="padding: 8px; text-align: center;">${cacheUltimosDados.total}</td>
-                    <td style="padding: 8px; text-align: right;">100%</td>
-                </tr>
-            `;
-
-            document.getElementById('print-argumento-1').innerText = `Constata-se que o volume total apurado no período foi de ${cacheUltimosDados.total} ocorrências. O indicador de maior impacto refere-se às faltas e avarias identificadas na doca de carregamento, exigindo plano de ação junto à conferência e separação.`;
-            document.getElementById('print-argumento-2').innerText = `Recomenda-se reforçar a verificação por leitura SSCC e o rastreio rigoroso de volumes divergentes para blindar a operação contra contestações indevidas no fechamento do turno.`;
-
-            window.print();
-        }
-
-        function exportarExcel() {
-            if (registros.length === 0) { alert("Sem dados."); return; }
-            const dadosExport = registros.map(r => ({
-                "Data": formatarDataBR(r.data),
-                "Rasgadas (Sorter)": r.sorter,
-                "Rasgadas (Carregamento)": r.carregamento,
-                "Faltas no Carregamento": r.faltas,
-                "Faltas no App": r.faltasNoApp || 0,
-                "Faltas Requisitadas": cacheUltimosDados.tFaltasRequisitadas || 0,
-                "Total Ocorrências": r.sorter + r.carregamento + r.faltas + (r.faltasNoApp || 0)
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dadosExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Ocorrencias");
-            XLSX.writeFile(workbook, "Controle_Ocorrencias_Turno1.xlsx");
-        }
-
-        function baixarImagem() {
-            html2canvas(document.getElementById('painel-conteudo'), { scale: 2 }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'painel_ocorrencias.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            });
-        }
-
-        window.onload = function() { carregarRegistrosSupabase(); };
-    </script>
-</body>
-</html>
+                    // Contagem App
+                    if (!contagemAppPorData[dt]) contagemAppPorData[dt] = 0;
+                    const valApp = String(item.no_app || '').trim().toLowerCase();
+                    if (valApp === 'sim' || valApp === 'true' || valApp === '1' || valApp === 's') {
+                        contagemAppPorDa
