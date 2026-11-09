@@ -186,7 +186,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Faltas no App</p>
-                        <h3 class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" id="kpi-faltas-no-app">0</h3>
+                        <h3 class="text-xl font-extrabold text-emerald-600 dark:text-gray-100 mt-1" id="kpi-faltas-no-app">0</h3>
                     </div>
                     <div class="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-full text-emerald-600 dark:text-emerald-400">
                         <i class="fa-solid fa-mobile-screen-button text-sm"></i>
@@ -275,30 +275,39 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE LÓGICA E CONEXÃO SUPABASE -->
+    <!-- SCRIPT DE LÓGICA E CONEXÃO COM OS DOIS SUPABASES -->
     <script>
-        const SUPABASE_URL = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
+        // 1. URL E CHAVE DO PROJETO DE REQUISIÇÕES / CONTROLE DE FALTAS (Portão)
+        const REQ_SUPABASE_URL = 'https://mpsyqawieuwjgupoedib.supabase.co';
+        const REQ_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc3lxYXdpZXV3amd1cG9lZGliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1MTA1OTQsImV4cCI6MjEwNjA4NjU5NH0.P9I8u6ycOBCKYIT2mvp35kZ-SfNTHiVY3Jkw7ltYFuQ';
 
-        let supabaseClient = null;
+        // 2. URL E CHAVE DO PROJETO DE OCORRÊNCIAS DO TURNO 1 (O projeto original do painel)
+        const OCOR_SUPABASE_URL = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
+        const OCOR_SUPABASE_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
+
+        let reqClient = null;
+        let ocorClient = null;
         let registrosOcorrencias = [];
         let totalRequisitadasGeral = 0;
         let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tRequisitadas: 0, tFaltasNoApp: 0, total: 0 };
 
         try {
-            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            if (REQ_SUPABASE_URL && REQ_SUPABASE_KEY) {
+                reqClient = supabase.createClient(REQ_SUPABASE_URL, REQ_SUPABASE_KEY);
+            }
+            if (OCOR_SUPABASE_URL && OCOR_SUPABASE_KEY) {
+                ocorClient = supabase.createClient(OCOR_SUPABASE_URL, OCOR_SUPABASE_KEY);
             }
         } catch (e) {
-            console.error("Erro ao instanciar o Supabase:", e);
+            console.error("Erro ao instanciar os clientes Supabase:", e);
         }
 
         let chartQuant1, chartQuant2, chartQuant3;
 
         async function carregarRegistrosSupabase() {
             try {
-                if (supabaseClient) {
-                    // Loop de paginação para carregar TODOS os registros (ultrapassando o limite padrão de 100 linhas do Supabase)
+                // A. Busca as Requisitadas no projeto de Requisições/Portão (mpsyqawieuwjgupoedib)
+                if (reqClient) {
                     let todosItensPortao = [];
                     let rangeSize = 1000;
                     let inicio = 0;
@@ -306,7 +315,7 @@
                     let buscando = true;
 
                     while (buscando) {
-                        const { data: lote, error: errPortao } = await supabaseClient
+                        const { data: lote, error: errPortao } = await reqClient
                             .from('controle_faltas_portao')
                             .select('*')
                             .range(inicio, fim);
@@ -324,42 +333,43 @@
                         }
                     }
 
-                    console.log("Total de registros carregados do portão:", todosItensPortao.length);
                     totalRequisitadasGeral = 0;
-
                     todosItensPortao.forEach(item => {
                         const req = String(item.requisitada || '').trim().toLowerCase();
-                        if (req === 'sim' || req === 's' || req === 'true' || req === '1') {
+                        const st = String(item.status || '').trim().toLowerCase();
+                        if (req === 'sim' || req === 's' || req === 'true' || req === '1' ||
+                            st === 'sim' || st === 's' || st === 'true' || st === '1') {
                             totalRequisitadasGeral++;
                         }
                     });
-
-                    console.log("Total exato de Requisitadas contado em todas as páginas:", totalRequisitadasGeral);
+                    console.log("Total de Requisitadas contado no projeto de requisições:", totalRequisitadasGeral);
                 }
 
-                // Busca os lançamentos do Turno 1
-                const { data, error } = await supabaseClient
-                    .from('ocorrencias_turno1')
-                    .select('*')
-                    .gte('data', '2026-10-18')
-                    .order('data', { ascending: false });
+                // B. Busca as Ocorrências do Turno 1 no projeto original (dylwhnsxjbeiukdmcupq)
+                if (ocorClient) {
+                    const { data, error } = await ocorClient
+                        .from('ocorrencias_turno1')
+                        .select('*')
+                        .gte('data', '2026-10-18')
+                        .order('data', { ascending: false });
 
-                if (error) throw error;
+                    if (error) throw error;
 
-                registrosOcorrencias = (data || []).map(item => ({
-                    id: item.id,
-                    data: item.data,
-                    sorter: item.sorter || 0,
-                    carregamento: item.carregamento || 0,
-                    faltas: item.faltas || 0,
-                    faltasNoApp: item.faltas_no_app || 0,
-                    observacoes: item.observacoes || '',
-                    responsavel: item.responsavel || 'Yens Farrapo'
-                }));
+                    registrosOcorrencias = (data || []).map(item => ({
+                        id: item.id,
+                        data: item.data,
+                        sorter: item.sorter || 0,
+                        carregamento: item.carregamento || 0,
+                        faltas: item.faltas || 0,
+                        faltasNoApp: item.faltas_no_app || 0,
+                        observacoes: item.observacoes || '',
+                        responsavel: item.responsavel || 'Yens Farrapo'
+                    }));
+                }
 
                 aplicarFiltroCalendario();
             } catch (err) {
-                console.error("Erro ao carregar do Supabase:", err);
+                console.error("Erro ao carregar dos bancos Supabase:", err);
             }
         }
 
@@ -520,17 +530,7 @@
         }
 
         function gerarRelatorioImpresso() {
-            const dataInicio = document.getElementById('filtro-data-inicio').value;
-            const dataFim = document.getElementById('filtro-data-fim').value;
-            
-            let textoPeriodoStr = "Consolidado geral acumulado de todas as ocorrências registradas.";
-            if (dataInicio && dataFim) {
-                textoPeriodoStr = `Período auditado de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}.`;
-            }
-
             document.getElementById('print-data-geracao').innerText = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
-            document.getElementById('print-texto-periodo').innerText = `O presente relatório gerencial consolida os apontamentos quantitativos do 1º Turno do Portão 1 CD. ${textoPeriodoStr}`;
-
             const total = cacheUltimosDados.total || 1;
             const calcPerc = (val) => ((val / total) * 100).toFixed(1) + '%';
 
