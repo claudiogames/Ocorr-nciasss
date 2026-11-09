@@ -277,11 +277,9 @@
 
     <!-- SCRIPT DE LÓGICA E CONEXÃO COM OS DOIS SUPABASES -->
     <script>
-        // 1. URL E CHAVE DO PROJETO DE REQUISIÇÕES / CONTROLE DE FALTAS (Portão)
         const REQ_SUPABASE_URL = 'https://mpsyqawieuwjgupoedib.supabase.co';
         const REQ_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc3lxYXdpZXV3amd1cG9lZGliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1MTA1OTQsImV4cCI6MjEwNjA4NjU5NH0.P9I8u6ycOBCKYIT2mvp35kZ-SfNTHiVY3Jkw7ltYFuQ';
 
-        // 2. URL E CHAVE DO PROJETO DE OCORRÊNCIAS DO TURNO 1 (O projeto original do painel)
         const OCOR_SUPABASE_URL = 'https://dylwhnsxjbeiukdmcupq.supabase.co';
         const OCOR_SUPABASE_KEY = 'sb_publishable_uZL-3Z0_a-X-ZjMhwRXC9w_RP8c754J';
 
@@ -306,7 +304,7 @@
 
         async function carregarRegistrosSupabase() {
             try {
-                // A. Busca as Requisitadas no projeto de Requisições/Portão (mpsyqawieuwjgupoedib)
+                // A. Busca as Requisitadas no projeto de Requisições/Portão (apenas para o card contador)
                 if (reqClient) {
                     let todosItensPortao = [];
                     let rangeSize = 1000;
@@ -342,10 +340,9 @@
                             totalRequisitadasGeral++;
                         }
                     });
-                    console.log("Total de Requisitadas contado no projeto de requisições:", totalRequisitadasGeral);
                 }
 
-                // B. Busca as Ocorrências do Turno 1 no projeto original (dylwhnsxjbeiukdmcupq)
+                // B. Busca as Ocorrências do Turno 1 no projeto original
                 if (ocorClient) {
                     const { data, error } = await ocorClient
                         .from('ocorrencias_turno1')
@@ -428,7 +425,8 @@
             });
 
             const tRequisitadas = totalRequisitadasGeral;
-            const totalGeral = tSorter + tCarregamento + tFaltas + tRequisitadas + tFaltasNoApp;
+            // Total geral focado apenas nas ocorrências operacionais do Turno 1
+            const totalGeral = tSorter + tCarregamento + tFaltas + tFaltasNoApp;
 
             cacheUltimosDados = { tSorter, tCarregamento, tFaltas, tRequisitadas, tFaltasNoApp, total: totalGeral };
 
@@ -439,24 +437,26 @@
             document.getElementById('kpi-faltas-no-app').innerText = tFaltasNoApp;
             document.getElementById('kpi-total').innerText = totalGeral;
 
-            renderizarGraficosVerdes(lab, tSorter, tCarregamento, tFaltas, tRequisitadas, tFaltasNoApp, lab, dSorter, dCarregamento, dFaltas);
+            // Renderiza os gráficos excluindo as Requisitadas (conforme solicitado)
+            renderizarGraficosVerdes(lab, tSorter, tCarregamento, tFaltas, tFaltasNoApp, lab, dSorter, dCarregamento, dFaltas);
         }
 
-        function renderizarGraficosVerdes(labels, tSorter, tCarregamento, tFaltas, tRequisitadas, tFaltasNoApp, diasLabels, diasSorter, diasCarregamento, diasFaltas) {
+        function renderizarGraficosVerdes(labels, tSorter, tCarregamento, tFaltas, tFaltasNoApp, diasLabels, diasSorter, diasCarregamento, diasFaltas) {
             const isDark = document.documentElement.classList.contains('dark');
             const corTexto = isDark ? '#94a3b8' : '#4b5563';
             const corGrid = isDark ? '#334155' : '#f3f4f6';
 
-            const palette = ['#10b981', '#059669', '#34d399', '#f97316', '#047857'];
+            // Cores exclusivas para as ocorrências do Turno 1 (sem Requisitadas)
+            const palette = ['#10b981', '#059669', '#34d399', '#047857'];
 
             const ctx1 = document.getElementById('chartQuant1').getContext('2d');
             if (chartQuant1) chartQuant1.destroy();
             chartQuant1 = new Chart(ctx1, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Sorter', 'Carreg.', 'Faltas', 'Requisitadas', 'App'],
+                    labels: ['Sorter', 'Carreg.', 'Faltas', 'App'],
                     datasets: [{
-                        data: [tSorter, tCarregamento, tFaltas, tRequisitadas, tFaltasNoApp],
+                        data: [tSorter, tCarregamento, tFaltas, tFaltasNoApp],
                         backgroundColor: palette,
                         borderWidth: 0
                     }]
@@ -501,7 +501,6 @@
 
             const ranking = [
                 { nome: 'Faltas Carreg.', qtd: tFaltas },
-                { nome: 'Requisitadas', qtd: tRequisitadas },
                 { nome: 'Rasgadas Carreg.', qtd: tCarregamento },
                 { nome: 'Rasgadas Sorter', qtd: tSorter },
                 { nome: 'Faltas no App', qtd: tFaltasNoApp }
@@ -542,11 +541,6 @@
                     <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tFaltas)}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px;">Requisitadas</td>
-                    <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tRequisitadas}</td>
-                    <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tRequisitadas)}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="padding: 6px;">Rasgadas no Carregamento</td>
                     <td style="padding: 6px; text-align: center; font-weight: bold;">${cacheUltimosDados.tCarregamento}</td>
                     <td style="padding: 6px; text-align: right;">${calcPerc(cacheUltimosDados.tCarregamento)}</td>
@@ -578,9 +572,8 @@
                 "Rasgadas (Sorter)": r.sorter,
                 "Rasgadas (Carregamento)": r.carregamento,
                 "Faltas no Carregamento": r.faltas,
-                "Requisitadas": cacheUltimosDados.tRequisitadas || 0,
                 "Faltas no App": r.faltasNoApp || 0,
-                "Total Ocorrências": r.sorter + r.carregamento + r.faltas + (cacheUltimosDados.tRequisitadas || 0) + (r.faltasNoApp || 0)
+                "Total Ocorrências": r.sorter + r.carregamento + r.faltas + (r.faltasNoApp || 0)
             }));
             const worksheet = XLSX.utils.json_to_sheet(dadosExport);
             const workbook = XLSX.utils.book_new();
