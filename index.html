@@ -230,7 +230,7 @@
 
     </div>
 
-    <!-- ELEMENTO OCULTO PARA IMPRESSÃO DE RELATÓRIO PROFISSIONAL ARGUMENTATIVO -->
+    <!-- ELEMENTO OCULTO PARA IMPRESSÃO DE RELATÓRIO -->
     <div id="relatorio-impressao" class="hidden">
         <div style="font-family: Arial, sans-serif; color: #000; padding: 20px; max-width: 800px; margin: 0 auto;">
             <div style="border-bottom: 2px solid #10b981; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -260,20 +260,8 @@
                             <th style="padding: 8px; text-align: right;">Participação Relativa</th>
                         </tr>
                     </thead>
-                    <tbody id="print-tabela-corpo">
-                        <!-- Preenchido via JS -->
-                    </tbody>
+                    <tbody id="print-tabela-corpo"></tbody>
                 </table>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #111;">3. Análise Argumentativa e Diagnóstico Operacional</h3>
-                <p style="margin: 0 0 8px 0; font-size: 12px; line-height: 1.5;" id="print-argumento-1">
-                    Durante o período analisado, observou-se variação no fluxo de processamento. A incidência de ocorrências concentra-se primordialmente nos registros de divergências de carregamento e faltas reportadas.
-                </p>
-                <p style="margin: 0; font-size: 12px; line-height: 1.5;" id="print-argumento-2">
-                    As ações corretivas focam na rastreabilidade estrita por SSCC e na validação em tempo real para blindar a operação contra contestações indevidas.
-                </p>
             </div>
 
             <div style="display: flex; justify-content: space-between; margin-top: 50px; font-size: 11px; text-align: center;">
@@ -310,25 +298,43 @@
         async function carregarRegistrosSupabase() {
             try {
                 if (supabaseClient) {
-                    // Busca todos os registros da tabela de carregamento sem travas de colunas ou datas
-                    const { data: itensPortao, error: errPortao } = await supabaseClient
-                        .from('controle_faltas_portao')
-                        .select('*');
+                    // Loop de paginação para carregar TODOS os registros (ultrapassando o limite padrão de 100 linhas do Supabase)
+                    let todosItensPortao = [];
+                    let rangeSize = 1000;
+                    let inicio = 0;
+                    let fim = rangeSize - 1;
+                    let buscando = true;
 
-                    if (errPortao) {
-                        console.error("Erro ao buscar controle_faltas_portao:", errPortao);
-                    } else if (itensPortao) {
-                        totalRequisitadasGeral = 0;
+                    while (buscando) {
+                        const { data: lote, error: errPortao } = await supabaseClient
+                            .from('controle_faltas_portao')
+                            .select('*')
+                            .range(inicio, fim);
 
-                        itensPortao.forEach(item => {
-                            // Suporta string ('Sim', 'sim', 'S'), boolean (true) ou número (1)
-                            const req = item.requisitada;
-                            if (req === true || req === 1 || String(req || '').trim().toLowerCase() === 'sim' || String(req || '').trim().toLowerCase() === 's') {
-                                totalRequisitadasGeral++;
+                        if (errPortao || !lote || lote.length === 0) {
+                            buscando = false;
+                        } else {
+                            todosItensPortao.push(...lote);
+                            if (lote.length < rangeSize) {
+                                buscando = false;
+                            } else {
+                                inicio += rangeSize;
+                                fim += rangeSize;
                             }
-                        });
-                        console.log("Total exato de Requisitadas contado:", totalRequisitadasGeral);
+                        }
                     }
+
+                    console.log("Total de registros carregados do portão:", todosItensPortao.length);
+                    totalRequisitadasGeral = 0;
+
+                    todosItensPortao.forEach(item => {
+                        const req = String(item.requisitada || '').trim().toLowerCase();
+                        if (req === 'sim' || req === 's' || req === 'true' || req === '1') {
+                            totalRequisitadasGeral++;
+                        }
+                    });
+
+                    console.log("Total exato de Requisitadas contado em todas as páginas:", totalRequisitadasGeral);
                 }
 
                 // Busca os lançamentos do Turno 1
@@ -433,7 +439,6 @@
 
             const palette = ['#10b981', '#059669', '#34d399', '#f97316', '#047857'];
 
-            // Gráfico 1: Doughnut
             const ctx1 = document.getElementById('chartQuant1').getContext('2d');
             if (chartQuant1) chartQuant1.destroy();
             chartQuant1 = new Chart(ctx1, {
@@ -452,7 +457,6 @@
                 }
             });
 
-            // Gráfico 2: Evolução por Linha
             const ctx2 = document.getElementById('chartQuant2').getContext('2d');
             if (chartQuant2) chartQuant2.destroy();
             
@@ -482,7 +486,6 @@
                 }
             });
 
-            // Gráfico 3: Ranking Horizontal
             const ctx3 = document.getElementById('chartQuant3').getContext('2d');
             if (chartQuant3) chartQuant3.destroy();
 
@@ -526,7 +529,7 @@
             }
 
             document.getElementById('print-data-geracao').innerText = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
-            document.getElementById('print-texto-periodo').innerText = `O presente relatório gerencial consolida os apontamentos quantitativos do 1º Turno do Portão 1 CD. ${textoPeriodoStr} O objetivo é subsidiar a tomada de decisão logística e apontar desvios operacionais.`;
+            document.getElementById('print-texto-periodo').innerText = `O presente relatório gerencial consolida os apontamentos quantitativos do 1º Turno do Portão 1 CD. ${textoPeriodoStr}`;
 
             const total = cacheUltimosDados.total || 1;
             const calcPerc = (val) => ((val / total) * 100).toFixed(1) + '%';
@@ -564,9 +567,6 @@
                     <td style="padding: 8px; text-align: right;">100%</td>
                 </tr>
             `;
-
-            document.getElementById('print-argumento-1').innerText = `Constata-se que o volume total apurado no período foi de ${cacheUltimosDados.total} ocorrências. O indicador de maior impacto refere-se às faltas e avarias identificadas na doca de carregamento, exigindo plano de ação junto à conferência e separação.`;
-            document.getElementById('print-argumento-2').innerText = `Recomenda-se reforçar a verificação por leitura SSCC e o rastreio rigoroso de volumes divergentes para blindar a operação contra contestações indevidas no fechamento do turno.`;
 
             window.print();
         }
