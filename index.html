@@ -133,7 +133,7 @@
         </section>
 
         <!-- Cards de Indicadores (KPIs) PRINCIPAIS -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 w-full">
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 w-full">
             <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-emerald-500 border border-gray-200 dark:border-slate-800">
                 <div class="flex justify-between items-center">
                     <div>
@@ -166,6 +166,18 @@
                     </div>
                     <div class="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-full text-emerald-600 dark:text-emerald-400">
                         <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-md p-4 border-l-4 border-blue-500 border border-gray-200 dark:border-slate-800">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Faltas Status Ok</p>
+                        <h3 class="text-xl font-extrabold text-blue-600 dark:text-blue-400 mt-1" id="kpi-concluidas">0</h3>
+                    </div>
+                    <div class="bg-blue-100 dark:bg-blue-950/50 p-2 rounded-full text-blue-600 dark:text-blue-400">
+                        <i class="fa-solid fa-circle-check text-sm"></i>
                     </div>
                 </div>
             </div>
@@ -298,9 +310,8 @@
         let reqClient = null;
         let ocorClient = null;
         let registrosOcorrencias = [];
-        let totalRequisitadasGeral = 0;
-        let totalPendFabricaGeral = 0;
-        let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tRequisitadas: 0, tPendFabrica: 0, tFaltasNoApp: 0, total: 0 };
+        let todosItensPortaoGeral = []; // Armazena todos os itens do portão em memória para filtragem por data
+        let cacheUltimosDados = { tSorter: 0, tCarregamento: 0, tFaltas: 0, tRequisitadas: 0, tPendFabrica: 0, tConcluidas: 0, tFaltasNoApp: 0, total: 0 };
 
         try {
             if (REQ_SUPABASE_URL && REQ_SUPABASE_KEY) {
@@ -317,9 +328,9 @@
 
         async function carregarRegistrosSupabase() {
             try {
-                // A. Busca Requisições e Pendências de Fábrica na base do Portão 1
+                // A. Busca todos os registros de controle de faltas do Portão 1
                 if (reqClient) {
-                    let todosItensPortao = [];
+                    todosItensPortaoGeral = [];
                     let rangeSize = 1000;
                     let inicio = 0;
                     let fim = rangeSize - 1;
@@ -334,7 +345,7 @@
                         if (errPortao || !lote || lote.length === 0) {
                             buscando = false;
                         } else {
-                            todosItensPortao.push(...lote);
+                            todosItensPortaoGeral.push(...lote);
                             if (lote.length < rangeSize) {
                                 buscando = false;
                             } else {
@@ -343,28 +354,9 @@
                             }
                         }
                     }
-
-                    totalRequisitadasGeral = 0;
-                    totalPendFabricaGeral = 0;
-
-                    todosItensPortao.forEach(item => {
-                        // Contagem de Requisitadas
-                        const req = String(item.requisitada || '').trim().toLowerCase();
-                        const st = String(item.status || '').trim().toLowerCase();
-                        if (req === 'sim' || req === 's' || req === 'true' || req === '1' ||
-                            st === 'sim' || st === 's' || st === 'true' || st === '1') {
-                            totalRequisitadasGeral++;
-                        }
-
-                        // Contagem de Pendências de Fábrica (Origem diferente de 'CD')
-                        const origem = String(item.origem || '').trim().toUpperCase();
-                        if (origem !== '' && origem !== 'CD') {
-                            totalPendFabricaGeral++;
-                        }
-                    });
                 }
 
-                // B. Busca as Ocorrências do Turno 1 na base original
+                // B. Busca as Ocorrências do Turno 1
                 if (ocorClient) {
                     const { data, error } = await ocorClient
                         .from('ocorrencias_turno1')
@@ -403,25 +395,59 @@
             const dataInicio = document.getElementById('filtro-data-inicio').value;
             const dataFim = document.getElementById('filtro-data-fim').value;
             const infoFiltro = document.getElementById('info-filtro-ativo');
-            let dadosFiltrados = [...registrosOcorrencias];
+            let dadosFiltradosOcorrencias = [...registrosOcorrencias];
 
-            dadosFiltrados = dadosFiltrados.filter(r => r.data >= '2026-10-18');
+            dadosFiltradosOcorrencias = dadosFiltradosOcorrencias.filter(r => r.data >= '2026-10-18');
 
             if (dataInicio && dataFim) {
-                dadosFiltrados = dadosFiltrados.filter(r => r.data >= dataInicio && r.data <= dataFim);
+                dadosFiltradosOcorrencias = dadosFiltradosOcorrencias.filter(r => r.data >= dataInicio && r.data <= dataFim);
                 infoFiltro.innerText = `Exibindo de ${formatarDataBR(dataInicio)} até ${formatarDataBR(dataFim)}`;
             } else if (dataInicio) {
-                dadosFiltrados = dadosFiltrados.filter(r => r.data >= dataInicio);
+                dadosFiltradosOcorrencias = dadosFiltradosOcorrencias.filter(r => r.data >= dataInicio);
                 infoFiltro.innerText = `Exibindo a partir de ${formatarDataBR(dataInicio)}`;
             } else if (dataFim) {
-                dadosFiltrados = dadosFiltrados.filter(r => r.data <= dataFim);
+                dadosFiltradosOcorrencias = dadosFiltradosOcorrencias.filter(r => r.data <= dataFim);
                 infoFiltro.innerText = `Exibindo até ${formatarDataBR(dataFim)}`;
             } else {
                 infoFiltro.innerText = `Exibindo: Todos os dados`;
             }
 
-            dadosFiltrados.sort((a, b) => new Date(a.data) - new Date(b.data));
-            processarDadosParaDashboard(dadosFiltrados);
+            dadosFiltradosOcorrencias.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            // Filtrar também os itens do Portão 1 com base no intervalo de datas selecionado (data_operacao)
+            let itensPortaoFiltrados = [...todosItensPortaoGeral];
+            if (dataInicio && dataFim) {
+                itensPortaoFiltrados = itensPortaoFiltrados.filter(item => item.data_operacao >= dataInicio && item.data_operacao <= dataFim);
+            } else if (dataInicio) {
+                itensPortaoFiltrados = itensPortaoFiltrados.filter(item => item.data_operacao >= dataInicio);
+            } else if (dataFim) {
+                itensPortaoFiltrados = itensPortaoFiltrados.filter(item => item.data_operacao <= dataFim);
+            }
+
+            // Recalcula os contadores dinamicamente para o período filtrado
+            let tRequisitadas = 0;
+            let tPendFabrica = 0;
+            let tConcluidas = 0;
+
+            itensPortaoFiltrados.forEach(item => {
+                const st = String(item.status || '').trim().toLowerCase();
+                const req = String(item.requisitada || '').trim().toLowerCase();
+                const origem = String(item.origem || '').trim().toUpperCase();
+
+                if (req === 'sim' || req === 's' || req === 'true' || req === '1' || st === 'sim' || st === 's') {
+                    tRequisitadas++;
+                }
+
+                if (origem !== '' && origem !== 'CD') {
+                    tPendFabrica++;
+                }
+
+                if (st.includes('entregue no portão') || st.includes('entregue no portao') || st === 'ok') {
+                    tConcluidas++;
+                }
+            });
+
+            processarDadosParaDashboard(dadosFiltradosOcorrencias, tRequisitadas, tPendFabrica, tConcluidas);
         }
 
         function limparFiltroCalendario() {
@@ -430,7 +456,7 @@
             aplicarFiltroCalendario();
         }
 
-        function processarDadosParaDashboard(dados) {
+        function processarDadosParaDashboard(dados, tRequisitadas, tPendFabrica, tConcluidas) {
             let tSorter = 0, tCarregamento = 0, tFaltas = 0, tFaltasNoApp = 0;
             const lab = [], dSorter = [], dCarregamento = [], dFaltas = [];
 
@@ -446,22 +472,21 @@
                 dFaltas.push(item.faltas);
             });
 
-            const tRequisitadas = totalRequisitadasGeral;
-            const tPendFabrica = totalPendFabricaGeral;
-            // Total focado exclusivamente nas ocorrências operacionais do Turno 1
             const totalGeral = tSorter + tCarregamento + tFaltas + tFaltasNoApp;
 
-            cacheUltimosDados = { tSorter, tCarregamento, tFaltas, tRequisitadas, tPendFabrica, tFaltasNoApp, total: totalGeral };
+            cacheUltimosDados = { tSorter, tCarregamento, tFaltas, tRequisitadas, tPendFabrica, tConcluidas, tFaltasNoApp, total: totalGeral };
 
             document.getElementById('kpi-sorter').innerText = tSorter;
             document.getElementById('kpi-carregamento-rasgadas').innerText = tCarregamento;
             document.getElementById('kpi-faltas').innerText = tFaltas;
+            if (document.getElementById('kpi-concluidas')) {
+                document.getElementById('kpi-concluidas').innerText = tConcluidas;
+            }
             document.getElementById('kpi-requisitadas').innerText = tRequisitadas;
             document.getElementById('kpi-pend-fabrica').innerText = tPendFabrica;
             document.getElementById('kpi-faltas-no-app').innerText = tFaltasNoApp;
             document.getElementById('kpi-total').innerText = totalGeral;
 
-            // Renderiza os gráficos ignorando Requisitadas e Pendências de Fábrica
             renderizarGraficosVerdes(lab, tSorter, tCarregamento, tFaltas, tFaltasNoApp, lab, dSorter, dCarregamento, dFaltas);
         }
 
